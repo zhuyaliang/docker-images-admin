@@ -1,6 +1,75 @@
 #include "docker-images-local.h"
 #include "docker-images-list.h"
 
+
+static void RemoveImages (GtkWidget *widget, gpointer data)
+{
+  GtkTreeIter iter;
+  DockerImagesManege *dm = (DockerImagesManege *)data;
+
+  if (gtk_tree_selection_get_selected (dm->LocalImagesSelect, NULL, &iter))
+    {
+      gint i;
+      GtkTreePath *path;
+
+      path = gtk_tree_model_get_path (dm->LocalModel, &iter);
+      i = gtk_tree_path_get_indices (path)[0];
+	  printf(" i = %d\r\n",i);
+	  gtk_list_store_remove (GTK_LIST_STORE (dm->LocalModel), &iter);
+      gtk_tree_path_free (path);
+    }
+}
+
+static void RunImages (GtkWidget *widget, gpointer data)
+{
+  GtkTreeIter iter;
+  DockerImagesManege *dm = (DockerImagesManege *)data;
+
+  if (gtk_tree_selection_get_selected (dm->LocalImagesSelect, NULL, &iter))
+    {
+      gint i;
+      GtkTreePath *path;
+
+      path = gtk_tree_model_get_path (dm->LocalModel, &iter);
+      i = gtk_tree_path_get_indices (path)[0];
+	  printf(" i = %d\r\n",i);
+	  gtk_tree_path_free (path);
+    }
+}
+
+static void SaveImages (GtkWidget *widget, gpointer data)
+{
+  GtkTreeIter iter;
+  DockerImagesManege *dm = (DockerImagesManege *)data;
+
+  if (gtk_tree_selection_get_selected (dm->LocalImagesSelect, NULL, &iter))
+    {
+      gint i;
+      GtkTreePath *path;
+
+      path = gtk_tree_model_get_path (dm->LocalModel, &iter);
+      i = gtk_tree_path_get_indices (path)[0];
+	  printf(" i = %d\r\n",i);
+	  gtk_tree_path_free (path);
+    }
+}
+
+static void OperationImages (GtkWidget *widget, gpointer data)
+{
+  GtkTreeIter iter;
+  DockerImagesManege *dm = (DockerImagesManege *)data;
+
+  if (gtk_tree_selection_get_selected (dm->LocalImagesSelect, NULL, &iter))
+    {
+      gint i;
+      GtkTreePath *path;
+
+      path = gtk_tree_model_get_path (dm->LocalModel, &iter);
+      i = gtk_tree_path_get_indices (path)[0];
+	  printf(" i = %d\r\n",i);
+	  gtk_tree_path_free (path);
+    }
+}
 GtkWidget *LoadLocalImages(DockerImagesManege *dm)
 {
     GtkWidget *Vbox;
@@ -10,7 +79,7 @@ GtkWidget *LoadLocalImages(DockerImagesManege *dm)
     GtkTreeSelection *selection;
     GtkWidget *Hbox;
 	GtkWidget *ButtonRemove;
-	GtkWidget *ButtonRun;
+	GtkWidget *ButtonRun ;
 	GtkWidget *ButtonOperation;
 	GtkWidget *ButtonSave;
     int i;
@@ -36,9 +105,9 @@ GtkWidget *LoadLocalImages(DockerImagesManege *dm)
     for( i = 0; i < 10; i ++)
     {
         ImagesListAppend(ImagesList,
-                         "docker.isoft.zhcn.cc/zhuyaliang/shipyard",
+						 "aaaaaaaaaaaaaaaaaaaaaaaaaa",
 						 "latest",
-						 "jfh8w8eq92idq",
+						 "jfssseewdsaasc",
 						  "458M",
 						  "blue",
 						 i,
@@ -56,14 +125,33 @@ GtkWidget *LoadLocalImages(DockerImagesManege *dm)
 	
 	ButtonRemove =    gtk_button_new_with_label(_(" Remove  "));
     gtk_box_pack_start(GTK_BOX(Hbox),ButtonRemove, FALSE, FALSE,0);
+	g_signal_connect (ButtonRemove, 
+					 "clicked",
+                      G_CALLBACK (RemoveImages), 
+					  dm);
+
 	ButtonSave =      gtk_button_new_with_label(_("  Save      "));
     gtk_box_pack_start(GTK_BOX(Hbox),ButtonSave, FALSE, FALSE,0);
+	g_signal_connect (ButtonSave, 
+					 "clicked",
+                      G_CALLBACK (SaveImages), 
+					  dm);
+
 	ButtonOperation = gtk_button_new_with_label(_("Operation"));
     gtk_box_pack_start(GTK_BOX(Hbox),ButtonOperation, FALSE, FALSE,0);
+	g_signal_connect (ButtonOperation, 
+					 "clicked",
+                      G_CALLBACK (OperationImages), 
+					  dm);
+	
 	ButtonRun =       gtk_button_new_with_label(_("   Run      "));
     gtk_box_pack_start(GTK_BOX(Hbox),ButtonRun, FALSE, FALSE,0);
+	g_signal_connect (ButtonRun, 
+					 "clicked",
+                      G_CALLBACK (RunImages), 
+					  dm);
 
-	g_signal_connect(selection, "changed", G_CALLBACK(Select), ua);
+	//g_signal_connect(selection, "changed", G_CALLBACK(Select), ua);
 
 	return Vbox;
 }		
