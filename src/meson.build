@@ -6,6 +6,7 @@ sources = [
 'docker-images-local.c', 
 'docker-images-remote.c',  
 'docker-images-list.c',   
+'docker-images-utils.c',   
 ]
 
 account_src = gnome.gdbus_codegen(
@@ -24,7 +25,7 @@ account_user_src = gnome.gdbus_codegen(
 
 executable('images-admin',
   sources : sources,
-  dependencies : [gtk_deps],
+  dependencies : [gtk_deps,curl_deps],
   include_directories: top_srcdir,
   install : true,
   install_dir : get_option('bindir')

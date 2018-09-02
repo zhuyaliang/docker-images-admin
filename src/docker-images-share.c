@@ -7,8 +7,14 @@ gboolean on_window_quit (GtkWidget *widget,
                          GdkEvent *event, 
                          gpointer user_data)
 {
-        gtk_main_quit();
-        return TRUE;
+	DockerImagesManege *dm = (DockerImagesManege *)user_data;
+  	free(dm->dc->Buffer->DockerData);
+  	free(dm->dc->Buffer);
+    curl_easy_cleanup(dm->dc->curl);
+  	free(dm->dc);
+
+	gtk_main_quit();
+    return TRUE;
 }
 /******************************************************************************
 * Function:            MessageReport

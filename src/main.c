@@ -1,6 +1,7 @@
 #include "docker-images-share.h"
 #include "docker-images-local.h"
 #include "docker-images-remote.h"
+#include "docker-images-utils.h"
 
 
 static GdkPixbuf * GetAppIcon(void)
@@ -26,10 +27,6 @@ static void InitMainWindow(DockerImagesManege *dm)
     gtk_window_set_position(GTK_WINDOW(Window), GTK_WIN_POS_CENTER);
     gtk_window_set_title(GTK_WINDOW(Window), _("docker images admin"));
     gtk_container_set_border_width(GTK_CONTAINER(Window),10);
-    g_signal_connect(G_OBJECT(Window), 
-                    "delete-event",
-                    G_CALLBACK(on_window_quit),
-                    NULL);
     
     AppIcon = GetAppIcon();
     if(AppIcon)
@@ -140,9 +137,18 @@ int main(int argc, char **argv)
     
     gtk_init(&argc, &argv);
     
+	/*Initialization docker API and Curl*/
+	dm.dc = InitDocker();
+	if(dm.dc == NULL)
+	{
+		exit(1);	
+	}			
     /* Create the main window */
     InitMainWindow(&dm);
-
+	g_signal_connect(G_OBJECT(dm.MainWindow), 
+                    "delete-event",
+                    G_CALLBACK(on_window_quit),
+                    &dm);
     /* Check whether the process has been started */
     if(ProcessRuning() == TRUE)
         exit(0);        

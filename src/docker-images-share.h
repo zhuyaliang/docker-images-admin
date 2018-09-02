@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <time.h>
 #include <sys/time.h>
+#include <curl/curl.h>
 
 #include <libintl.h> // gettext 库支持  
 #include <locale.h> // 本地化locale的翻译支持  
@@ -25,12 +26,24 @@
 #define  INFOR      3
 #define  QUESTION   4
 
+struct buffer
+{
+    char *DockerData;
+    size_t DataSize;
+};
+
+typedef struct docker
+{
+    CURL *curl;
+    struct buffer *Buffer;
+}DockerClient;
+
 typedef struct
 {
     char ImagesName[128];
     char ImagesTag[20];
     char ImagesId[12];
-    char ImagesSzie[20];
+    char ImagesSzie[10];
     GtkTreeIter Iter;
 }ImagesInfoList;
 
@@ -38,6 +51,7 @@ typedef struct
 {
     ImagesInfoList dll[200];
     ImagesInfoList dtl[200];
+	DockerClient  *dc;
     GtkWidget     *MainWindow;
     GtkWidget     *NoteBook;
     GtkListStore  *ListSTore;
