@@ -42,8 +42,8 @@ typedef struct
 {
     char ImagesName[128];
     char ImagesTag[20];
-    char ImagesId[12];
-    char ImagesSzie[10];
+    char ImagesSzie[100];
+    char ImagesId[13];
     GtkTreeIter Iter;
 }ImagesInfoList;
 
@@ -61,6 +61,8 @@ typedef struct
     GtkTreeModel  *RemoteModel;
 	GtkTreeSelection *LocalImagesSelect;
 	GtkTreeSelection *RemoteImagesSelect;
+    GtkWidget *EntryAddress;
+    GtkWidget *EntryPort;
 }DockerImagesManege;
 
 GtkWidget *WindowLogin;
@@ -75,6 +77,5 @@ void SetLableFontType(GtkWidget *Lable,
 					  int FontSzie,
 					  const char *Word);
 
-
-
+void SetWidgetStyle(GtkWidget * Widget,const char *Color,int FontSize);
 #endif

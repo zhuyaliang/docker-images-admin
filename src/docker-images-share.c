@@ -100,7 +100,10 @@ int MessageReport(const char *Title,const char *Msg,int nType)
 *        
 * Author:  zhuyaliang  25/05/2018
 ******************************************************************************/
-void SetLableFontType(GtkWidget *Lable ,const char *Color,int FontSzie,const char *Word)        
+void SetLableFontType(GtkWidget *Lable ,
+                      const char *Color,
+                      int FontSzie,
+                      const char *Word)        
 {
     char LableTypeBuf[200] = { 0 };
     
@@ -108,5 +111,17 @@ void SetLableFontType(GtkWidget *Lable ,const char *Color,int FontSzie,const cha
            "<span foreground=\'%s\'weight=\'light\'font_desc=\'%d\'>%s</span>",
             Color,FontSzie,Word);
     gtk_label_set_markup(GTK_LABEL(Lable),LableTypeBuf);
+}
+void SetWidgetStyle(GtkWidget * Widget,const char *Color,int FontSize)
+{
+    GdkRGBA Rgb;
+    PangoFontDescription *font_desc;
 
-}        
+    if(gdk_rgba_parse(&Rgb,Color) == TRUE)
+        gtk_widget_override_color(Widget, GTK_STATE_NORMAL, &Rgb);
+
+    font_desc = pango_font_description_from_string("Sans Blod 20");
+    pango_font_description_set_size (font_desc, FontSize * PANGO_SCALE);
+    gtk_widget_modify_font (Widget, font_desc);
+    pango_font_description_free (font_desc);
+}

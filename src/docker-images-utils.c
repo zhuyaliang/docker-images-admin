@@ -17,9 +17,9 @@ static size_t WriteFunction(void *data, size_t size, size_t nmemb, void *buf)
   	return realsize;
 }
 
-static void InitCurl(DockerClient *dc) 
+static void InitCurl(DockerClient *dc,const char *Socket) 
 {
-  	curl_easy_setopt(dc->curl, CURLOPT_UNIX_SOCKET_PATH, DOCKERSOCK);
+  	curl_easy_setopt(dc->curl, CURLOPT_UNIX_SOCKET_PATH, Socket);
   	curl_easy_setopt(dc->curl, CURLOPT_WRITEFUNCTION, WriteFunction);
   	curl_easy_setopt(dc->curl, CURLOPT_WRITEDATA, dc->Buffer);
 }
@@ -44,7 +44,6 @@ DockerClient *InitDocker(void)
 
   	if (dc->curl) 
 	{
-    	InitCurl(dc);
     	return dc;
   	}
 
@@ -68,10 +67,10 @@ static CURLcode Perform(DockerClient *dc, char *url)
 
   	return response;
 }
-CURLcode DockerGet(DockerClient *dc, char *url) 
+CURLcode DockerGet(DockerClient *dc, const char *url,const char *Socket) 
 {
-  InitCurl(dc);
-  return Perform(dc, url);
+  InitCurl(dc,Socket);
+  return Perform(dc,url);
 }
 char *GetBuffer(DockerClient *dc) 
 {

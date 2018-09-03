@@ -7,7 +7,7 @@
 #define   DOCKERSOCK            "/var/run/docker.sock" 
 
 DockerClient *InitDocker(void);
-CURLcode      DockerGet(DockerClient *dc, char *url);
+CURLcode      DockerGet(DockerClient *dc, const char *url,const char *Socket);
 char         *GetBuffer(DockerClient *dc); 
 
 #endif 

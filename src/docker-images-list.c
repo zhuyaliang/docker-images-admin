@@ -97,7 +97,7 @@ void ImagesListAppend(GtkWidget *list,
                        LIST_ID,   ImagesId,
                        LIST_SIZE, ImagesSize,
                        LIST_COLOR,Color,
-                       LIST_FRONT,1985,
+                       LIST_FRONT,300,
                        -1);
     *Iter = iter;
 

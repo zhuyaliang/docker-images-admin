@@ -73,82 +73,110 @@ static void OperationImages (GtkWidget *widget, gpointer data)
 }
 static int ExtractNameTag(int index,char *data,DockerImagesManege *dm)
 {
-    int i=0;
-    char *p;
-    int len = strlen(&data[13]);
-
-    while(i < len)
+    char  **ImageInfo;
+    int len = 0;
+    
+    ImageInfo = g_strsplit(data,":",-1);
+    len = g_strv_length(ImageInfo);
+    if(len == 2)
     {
-        if(data[13 + i] == ':')
-            break;
-        i++;
+	    memset(dm->dll[index].ImagesName,'\0',strlen(dm->dll[index].ImagesName));
+        memcpy(dm->dll[index].ImagesName,"<none>",6);
+	    memset(dm->dll[index].ImagesTag,'\0',strlen(dm->dll[index].ImagesTag));
+        memcpy(dm->dll[index].ImagesTag,"<none>",6);
     }
-	memset(dm->dll[index].ImagesName,'\0',strlen(dm->dll[index].ImagesName));
-    memcpy(dm->dll[index].ImagesName,&data[13],i);
-    p = strchr(&data[13],':');
-	memset(dm->dll[index].ImagesTag,'\0',strlen(dm->dll[index].ImagesTag));
-    memcpy(dm->dll[index].ImagesTag,p+1,strlen(p)-3);
-
-	return 0;
+    else if(len <= 1)
+    {
+        g_strfreev(ImageInfo);
+        return len;
+    }
+    else
+    {
+	    memset(dm->dll[index].ImagesName,'\0',strlen(dm->dll[index].ImagesName));
+        memcpy(dm->dll[index].ImagesName,&ImageInfo[1][2],(strlen(ImageInfo[1])-2));
+	    memset(dm->dll[index].ImagesTag,'\0',strlen(dm->dll[index].ImagesTag));
+        memcpy(dm->dll[index].ImagesTag,ImageInfo[2],(strlen(ImageInfo[2])-2));
+    }
+    g_strfreev(ImageInfo);
+	return len;
 }
 static int ExtractId(int index,char *data,DockerImagesManege *dm)
 {
-	memset(dm->dll[index].ImagesId,'\0',strlen(dm->dll[index].ImagesId));
+	if(strlen(data) < 78)
+        return -1;
+    memset(dm->dll[index].ImagesId,'\0',strlen(dm->dll[index].ImagesId));
     memcpy(dm->dll[index].ImagesId,&data[13],12);
+
 	return 0;
 }
 static int ExtractSzie(int index,char *data,DockerImagesManege *dm)
 {
-	memset(dm->dll[index].ImagesSzie,'\0',strlen(dm->dll[index].ImagesSzie));
-    memcpy(dm->dll[index].ImagesSzie,&data[7],10);
-	
+    float size = 0.0;
+    char Sizebuf[24] = { 0 };
+    if(strlen(data) < 7)
+        return -1;
+    size = atof(&data[7]);
+    if(size <= 1000)
+    {
+        sprintf(Sizebuf,"%.2f %s",size, "K");
+        memset(dm->dll[index].ImagesSzie,'\0',strlen(dm->dll[index].ImagesSzie));
+        memcpy(dm->dll[index].ImagesSzie,Sizebuf,strlen(Sizebuf));
+    }    
+    else if(size > 1000 && size <=1000000)
+    {
+        sprintf(Sizebuf,"%.2f %s",size / 1000, "KB");
+        memset(dm->dll[index].ImagesSzie,'\0',strlen(dm->dll[index].ImagesSzie));
+        memcpy(dm->dll[index].ImagesSzie,Sizebuf,strlen(Sizebuf));
+    }
+    else if(size > 1000000 && size <= 1000000000)
+    {
+        sprintf(Sizebuf,"%.2f %s",(size / (1000 * 1000)), "MB");
+        memset(dm->dll[index].ImagesSzie,'\0',strlen(dm->dll[index].ImagesSzie));
+        memcpy(dm->dll[index].ImagesSzie,Sizebuf,strlen(Sizebuf));
+    }    
+    else 
+    {
+        sprintf(Sizebuf,"%.2f %s",(size / (1000 * 1000 *1000)), "GB");
+        memset(dm->dll[index].ImagesSzie,'\0',strlen(dm->dll[index].ImagesSzie));
+        memcpy(dm->dll[index].ImagesSzie,Sizebuf,strlen(Sizebuf));
+    
+    }    
 	return 0;
 }
 static int JsonSplit(int index,char *data,DockerImagesManege *dm)
 {
-    char   Delim[] = ",";
-    char  *SplitResult = NULL;
-    char  *ImageInfo[1024] = { 0 };
-    int i = 0;
-
-    SplitResult = strtok( data, Delim);
-    while( SplitResult != NULL )
+    char  **ImageInfo;
+    int len = 0;
+    
+    ImageInfo = g_strsplit(data,",",-1);
+    len = g_strv_length(ImageInfo);
+    if(len < 10)
     {
-        ImageInfo[i] = SplitResult;
-        SplitResult = strtok( NULL, Delim );
-        i++;
-    }
-
+        return len;
+    }    
     ExtractNameTag(index,ImageInfo[6],dm);
-    ExtractId(index,ImageInfo[2],dm);
     ExtractSzie(index,ImageInfo[8],dm);
+    ExtractId(index,ImageInfo[2],dm);
 
-	printf("id = %s\r\n",dm->dll[index].ImagesId);	
-	return 0;
+	g_strfreev(ImageInfo); 
+    return len;
 }
 
 static int GetImagesInfo(char *data,DockerImagesManege *dm)
 {
-    char *SplitResult = NULL;
-    char *p;
-    char  Delim[] = "{";
-    char *ImageInfo[1024] = { 0 };
-    int i = 0;
-    int j = 0;
+    char **ImageInfo;
+    int len = 0;
+    int j;
+    
+    ImageInfo = g_strsplit(data,"\"Containers\"" ,-1);
+    len = g_strv_length(ImageInfo);
 
-    p = strchr(data,'{');
-    SplitResult = strtok(p, Delim);
-    while( SplitResult != NULL )
+    for(j = 1 ; j < len ; j++)
     {
-        ImageInfo[i] = SplitResult;
-        SplitResult = strtok( NULL, Delim );
-        i++;
-    }
-    for(j = 0 ; j < i ; j++)
-    {
-        JsonSplit(j,ImageInfo[j],dm);
+        JsonSplit(j-1,ImageInfo[j],dm);
     }	
-	return i;
+	g_strfreev(ImageInfo); 
+    return len - 1;
 }		
 GtkWidget *LoadLocalImages(DockerImagesManege *dm)
 {
@@ -184,7 +212,7 @@ GtkWidget *LoadLocalImages(DockerImagesManege *dm)
     ListViewInit(ImagesList);
     dm->LocalImagesList = ImagesList;
 	
-	response = DockerGet(dm->dc, "http://v1.25/images/json");
+	response = DockerGet(dm->dc, "http://v1.25/images/json",DOCKERSOCK);
 	if (response == CURLE_OK) 
 	{
     	len = GetImagesInfo(GetBuffer(dm->dc),dm);
