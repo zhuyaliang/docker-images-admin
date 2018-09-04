@@ -8,6 +8,10 @@
 
 DockerClient *InitDocker(void);
 CURLcode      DockerGet(DockerClient *dc, const char *url,const char *Socket);
+CURLcode DockerPost(DockerClient *dc,
+                    const char *url,
+                    const char *data,
+                    const char *head);
 char         *GetBuffer(DockerClient *dc); 
 
 #endif 

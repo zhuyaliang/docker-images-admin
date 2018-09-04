@@ -41,25 +41,103 @@ static void PushImages (GtkWidget *widget, gpointer data)
 
 static void PullImages (GtkWidget *widget, gpointer data)
 {
-  GtkTreeIter iter;
-  DockerImagesManege *dm = (DockerImagesManege *)data;
+    GtkTreeIter iter;
+    CURLcode response;
+    char MsgBuf[256] = { 0 };
+    DockerImagesManege *dm = (DockerImagesManege *)data;
 
-  if (gtk_tree_selection_get_selected (dm->LocalImagesSelect, NULL, &iter))
+    if (gtk_tree_selection_get_selected (dm->RemoteImagesSelect, NULL, &iter))
     {
-      gint i;
-      GtkTreePath *path;
+        gint i;
+        GtkTreePath *path;
 
-      path = gtk_tree_model_get_path (dm->LocalModel, &iter);
-      i = gtk_tree_path_get_indices (path)[0];
-	  printf(" i = %d\r\n",i);
-	  gtk_list_store_remove (GTK_LIST_STORE (dm->LocalModel), &iter);
-      gtk_tree_path_free (path);
+        path = gtk_tree_model_get_path (dm->RemoteModel, &iter);
+        i = gtk_tree_path_get_indices (path)[0];
+        sprintf(MsgBuf,"fromImage=%s:%s/%s:%s",
+                                  dm->Address,
+                                  dm->Port,
+                                  dm->dtl[i].ImagesName,
+                                  dm->dtl[i].ImagesTag);
+        response = DockerPost(dm->dc,"http:/v1.24/images/create?",MsgBuf,NULL);
+        if (response == CURLE_OK)
+        {
+            printf("return = %s\r\n",GetBuffer(dm->dc));
+        }
+        else
+        {
+            MessageReport(_("Pull Images"),
+                          curl_easy_strerror(response),
+                          ERROR);
+        }    
+        gtk_tree_path_free (path);
     }
 }
-
-static int GetImagesTag(int index,char *data,DockerImagesManege *dm)
+static int ImagesCount;
+static void WriteData(const char *name,const char *tag,DockerImagesManege *dm)
 {
+    memset(dm->dtl[ImagesCount].ImagesName,
+          '\0',
+          strlen(dm->dtl[ImagesCount].ImagesName));
+    memcpy(dm->dtl[ImagesCount].ImagesName,name,strlen(name));
 
+    memset(dm->dtl[ImagesCount].ImagesTag,
+          '\0',strlen(dm->dtl[ImagesCount].ImagesTag));
+    memcpy(dm->dtl[ImagesCount].ImagesTag,tag,strlen(tag));
+    ImagesCount++;
+
+}    
+static int AnalysisData(char *data,DockerImagesManege *dm)
+{
+    char **ImageInfo;
+    int len = 0;
+    int j,i;
+
+    ImageInfo = g_strsplit(data,"\"" ,-1);
+    len = g_strv_length(ImageInfo);
+    if(len < 9 )
+    {
+        return -1;
+    }    
+    if(len % 2 == 0)
+    {
+        return -1;
+    }    
+    i = (len - 9) / 2 + 1;
+    for(j = 0 ; j < i ; j++)
+    {
+        WriteData(ImageInfo[3],ImageInfo[7+j*2],dm);
+    }
+    return 0;
+}    
+static int GetImagesTag(char *data,DockerImagesManege *dm)
+{
+    char **ImageInfo;
+    CURLcode response;
+    int len = 0;
+    char MsgBuf[228] = { 0 };
+
+    ImageInfo = g_strsplit(data,"\"" ,-1);
+    len = g_strv_length(ImageInfo);
+    if(len <= 1)
+    {
+        return -1;
+    }    
+    sprintf(MsgBuf,"http://%s:%s/v2/%s/tags/list",dm->Address,dm->Port,ImageInfo[1]);
+    response = DockerGet(dm->dc,MsgBuf,NULL);
+    if (response == CURLE_OK)
+    {
+        AnalysisData(GetBuffer(dm->dc),dm);
+    }
+    else
+    {
+        MessageReport(_("Connect Repository"),
+                      curl_easy_strerror(response),
+                      ERROR);
+        return -1;
+    }
+    g_strfreev(ImageInfo);
+    
+    return 0;
 }    
 static int GetRemoteImagesInfo (char *data,DockerImagesManege *dm)
 {
@@ -72,8 +150,7 @@ static int GetRemoteImagesInfo (char *data,DockerImagesManege *dm)
 
     for(j = 1 ; j < len ; j++)
     {
-        printf("ImageInfo = %s\r\n",ImageInfo[j]);
-        GetImagesTag(j-1,ImageInfo[j],dm);
+        GetImagesTag(ImageInfo[j],dm);
     }
     g_strfreev(ImageInfo);
     return len - 1;
@@ -82,14 +159,18 @@ static int GetRemoteImagesInfo (char *data,DockerImagesManege *dm)
 static int GetRepositoryImages (GtkWidget *widget, gpointer data)
 {
     DockerImagesManege *dm = (DockerImagesManege *)data;
-    int i,len;
+    int i;
     CURLcode response;
     const char *Address;
     const char *Port;
     char MsgBuf[128] = { 0 };
 
-    Address = gtk_entry_get_text(GTK_ENTRY(dm->EntryAddress)); 
+    Address = gtk_entry_get_text(GTK_ENTRY(dm->EntryAddress));
+    memset(dm->Address,'\0',sizeof(dm->Address));
+    memcpy(dm->Address,Address,strlen(Address));
     Port    = gtk_entry_get_text(GTK_ENTRY(dm->EntryPort)); 
+    memset(dm->Port,'\0',sizeof(dm->Port));
+    memcpy(dm->Port,Port,strlen(Port));
     if(strlen(Address) <= 0 || strlen(Port) <= 0)
     {
         MessageReport(_("Connect Repository"),
@@ -101,7 +182,7 @@ static int GetRepositoryImages (GtkWidget *widget, gpointer data)
     response = DockerGet(dm->dc,MsgBuf,NULL);
     if (response == CURLE_OK)
     {
-        len = GetRemoteImagesInfo(GetBuffer(dm->dc),dm);
+        GetRemoteImagesInfo(GetBuffer(dm->dc),dm);
     }
     else
     {
@@ -110,20 +191,21 @@ static int GetRepositoryImages (GtkWidget *widget, gpointer data)
                       ERROR);
         return -1;
     }    
-    /*
-    for( i = 0; i < len; i ++)
+    
+    for( i = 0; i < ImagesCount; i ++)
     {
         ImagesListAppend(dm->RemoteImagesList,
-						 dm->dll[i].ImagesName,
-						 dm->dll[i].ImagesTag,
-						 dm->dll[i].ImagesId,
-						 dm->dll[i].ImagesSzie,
+						 dm->dtl[i].ImagesName,
+						 dm->dtl[i].ImagesTag,
+						 dm->dtl[i].ImagesId,
+						 dm->dtl[i].ImagesSzie,
 						  "blue",
 						 i,
-                         &dm->dll[i].Iter);
+                         &dm->dtl[i].Iter,
+                         NULL);
     
     }
-    */
+   
     return 0;
 }    
 static void ConnectRepository(GtkWidget *Box,DockerImagesManege *dm)

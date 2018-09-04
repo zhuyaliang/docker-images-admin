@@ -51,6 +51,8 @@ typedef struct
 {
     ImagesInfoList dll[200];
     ImagesInfoList dtl[200];
+    char Address[128];
+    char Port[10];
 	DockerClient  *dc;
     GtkWidget     *MainWindow;
     GtkWidget     *NoteBook;

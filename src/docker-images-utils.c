@@ -76,3 +76,26 @@ char *GetBuffer(DockerClient *dc)
 {
   return dc->Buffer->DockerData;
 }
+
+CURLcode DockerPost(DockerClient *dc,
+                    const char *url,
+                    const char *data,
+                    const char *head) 
+{
+    CURLcode response;
+    struct curl_slist *headers = NULL;
+
+    InitCurl(dc,DOCKERSOCK);
+    if(head != NULL)
+    {    
+        headers = curl_slist_append(headers, head);
+        curl_easy_setopt(dc->curl, CURLOPT_HTTPHEADER, headers);
+    }
+    curl_easy_setopt(dc->curl, CURLOPT_POSTFIELDS, (void *)data);
+    response = Perform(dc, url);
+    if(head != NULL)
+        curl_slist_free_all(headers);
+
+    return response;
+}
+

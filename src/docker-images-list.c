@@ -81,7 +81,8 @@ void ImagesListAppend(GtkWidget *list,
                       const gchar *ImagesSize,
                       const gchar *Color,
                       int Index,
-                      GtkTreeIter *Iter)
+                      GtkTreeIter *Iter,
+                      GtkListStore **list_store)
 {
     GtkListStore *store;
     GtkTreeIter iter;
@@ -100,6 +101,8 @@ void ImagesListAppend(GtkWidget *list,
                        LIST_FRONT,300,
                        -1);
     *Iter = iter;
+    if(list_store != NULL)
+        *list_store = store;
 
 }
 

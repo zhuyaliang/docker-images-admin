@@ -2,6 +2,39 @@
 #include "docker-images-list.h"
 #include "docker-images-utils.h"
 
+static GtkListStore *ListStore = NULL;
+static int GetImagesInfo(char *data,DockerImagesManege *dm);
+static void RefreshImagesList( DockerImagesManege *dm )
+{
+    int i;
+	int len = 0;
+	CURLcode response;
+
+	response = DockerGet(dm->dc, "http://v1.25/images/json",DOCKERSOCK);
+	if (response == CURLE_OK) 
+	{
+    	len = GetImagesInfo(GetBuffer(dm->dc),dm);
+    }
+	else
+	{
+		MessageReport(_("Get Images Fail"),_("Curl GET Error"),ERROR);
+	}		
+    if(ListStore != NULL)
+        gtk_list_store_clear(ListStore);
+    for( i = 0; i < len; i ++)
+    {
+        ImagesListAppend(dm->LocalImagesList,
+						 dm->dll[i].ImagesName,
+						 dm->dll[i].ImagesTag,
+						 dm->dll[i].ImagesId,
+						 dm->dll[i].ImagesSzie,
+						  "blue",
+						 i,
+                         &dm->dll[i].Iter,
+                         &ListStore);
+    }
+
+}    
 
 static void RemoveImages (GtkWidget *widget, gpointer data)
 {
@@ -38,64 +71,60 @@ static void RunImages (GtkWidget *widget, gpointer data)
     }
 }
 
-static void SaveImages (GtkWidget *widget, gpointer data)
+static void RefreshImages (GtkWidget *widget, gpointer data)
 {
-  GtkTreeIter iter;
-  DockerImagesManege *dm = (DockerImagesManege *)data;
-
-  if (gtk_tree_selection_get_selected (dm->LocalImagesSelect, NULL, &iter))
-    {
-      gint i;
-      GtkTreePath *path;
-
-      path = gtk_tree_model_get_path (dm->LocalModel, &iter);
-      i = gtk_tree_path_get_indices (path)[0];
-	  printf(" i = %d\r\n",i);
-	  gtk_tree_path_free (path);
-    }
+    DockerImagesManege *dm = (DockerImagesManege *)data;
+    RefreshImagesList(dm);
 }
 
 static void OperationImages (GtkWidget *widget, gpointer data)
 {
-  GtkTreeIter iter;
-  DockerImagesManege *dm = (DockerImagesManege *)data;
+    GtkTreeIter iter;
+    DockerImagesManege *dm = (DockerImagesManege *)data;
 
-  if (gtk_tree_selection_get_selected (dm->LocalImagesSelect, NULL, &iter))
+    if (gtk_tree_selection_get_selected (dm->LocalImagesSelect, NULL, &iter))
     {
-      gint i;
-      GtkTreePath *path;
+        gint i;
+        GtkTreePath *path;
 
-      path = gtk_tree_model_get_path (dm->LocalModel, &iter);
-      i = gtk_tree_path_get_indices (path)[0];
-	  printf(" i = %d\r\n",i);
-	  gtk_tree_path_free (path);
+        path = gtk_tree_model_get_path (dm->LocalModel, &iter);
+        i = gtk_tree_path_get_indices (path)[0];
+	    printf(" i = %d\r\n",i);
+	    gtk_tree_path_free (path);
     }
 }
 static int ExtractNameTag(int index,char *data,DockerImagesManege *dm)
 {
     char  **ImageInfo;
     int len = 0;
+    int length = 0;
+    const char *tag;
     
-    ImageInfo = g_strsplit(data,":",-1);
+    ImageInfo = g_strsplit(data,"[\"",-1);
     len = g_strv_length(ImageInfo);
-    if(len == 2)
+    if(len == 1)
     {
 	    memset(dm->dll[index].ImagesName,'\0',strlen(dm->dll[index].ImagesName));
         memcpy(dm->dll[index].ImagesName,"<none>",6);
 	    memset(dm->dll[index].ImagesTag,'\0',strlen(dm->dll[index].ImagesTag));
         memcpy(dm->dll[index].ImagesTag,"<none>",6);
     }
-    else if(len <= 1)
+    else if(len < 1)
     {
         g_strfreev(ImageInfo);
         return len;
     }
     else
     {
-	    memset(dm->dll[index].ImagesName,'\0',strlen(dm->dll[index].ImagesName));
-        memcpy(dm->dll[index].ImagesName,&ImageInfo[1][2],(strlen(ImageInfo[1])-2));
+	    length = strlen(ImageInfo[1]);
+        ImageInfo[1][length -2] = '\0';
+        tag = g_strrstr(ImageInfo[1],":");
 	    memset(dm->dll[index].ImagesTag,'\0',strlen(dm->dll[index].ImagesTag));
-        memcpy(dm->dll[index].ImagesTag,ImageInfo[2],(strlen(ImageInfo[2])-2));
+        memcpy(dm->dll[index].ImagesTag,&tag[1],(strlen(tag)-1));
+        memset(dm->dll[index].ImagesName,'\0',strlen(dm->dll[index].ImagesName));
+        memcpy(dm->dll[index].ImagesName,
+              ImageInfo[1],
+              (strlen(ImageInfo[1])-strlen(tag)));
     }
     g_strfreev(ImageInfo);
 	return len;
@@ -147,17 +176,29 @@ static int JsonSplit(int index,char *data,DockerImagesManege *dm)
 {
     char  **ImageInfo;
     int len = 0;
-    
+    char tmp[256] = { 0 };
+
     ImageInfo = g_strsplit(data,",",-1);
     len = g_strv_length(ImageInfo);
     if(len < 10)
     {
-        return len;
-    }    
-    ExtractNameTag(index,ImageInfo[6],dm);
-    ExtractSzie(index,ImageInfo[8],dm);
-    ExtractId(index,ImageInfo[2],dm);
+        return -1;
+    }
+    if(ImageInfo[6][strlen(ImageInfo[6]) -1] != ']' &&
+       ImageInfo[7][strlen(ImageInfo[7]) -1] == ']')
+    {
+        sprintf(tmp,"%s%s",ImageInfo[6],"]");
+        ExtractNameTag(index,tmp,dm);
+        ExtractSzie(index,ImageInfo[9],dm);
+        ExtractId(index,ImageInfo[2],dm);
 
+    }
+    else
+    {    
+        ExtractNameTag(index,ImageInfo[6],dm);
+        ExtractSzie(index,ImageInfo[8],dm);
+        ExtractId(index,ImageInfo[2],dm);
+    }
 	g_strfreev(ImageInfo); 
     return len;
 }
@@ -187,12 +228,9 @@ GtkWidget *LoadLocalImages(DockerImagesManege *dm)
     GtkTreeSelection *selection;
     GtkWidget *Hbox;
 	GtkWidget *ButtonRemove;
-	GtkWidget *ButtonRun ;
+	GtkWidget *ButtonRefresh;
 	GtkWidget *ButtonOperation;
-	GtkWidget *ButtonSave;
-    int i;
-	int len = 0;
-	CURLcode response;
+	GtkWidget *ButtonRun;
 
     Vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
 	gtk_widget_set_size_request (Vbox,-1,200);
@@ -211,28 +249,10 @@ GtkWidget *LoadLocalImages(DockerImagesManege *dm)
     /* init user list */
     ListViewInit(ImagesList);
     dm->LocalImagesList = ImagesList;
-	
-	response = DockerGet(dm->dc, "http://v1.25/images/json",DOCKERSOCK);
-	if (response == CURLE_OK) 
-	{
-    	len = GetImagesInfo(GetBuffer(dm->dc),dm);
-    }
-	else
-	{
-		MessageReport(_("Get Images Fail"),_("Curl GET Error"),ERROR);
-	}			
-    for( i = 0; i < len; i ++)
-    {
-        ImagesListAppend(ImagesList,
-						 dm->dll[i].ImagesName,
-						 dm->dll[i].ImagesTag,
-						 dm->dll[i].ImagesId,
-						 dm->dll[i].ImagesSzie,
-						  "blue",
-						 i,
-                         &dm->dll[i].Iter);
-    }
-	gtk_container_add (GTK_CONTAINER (Scrolled), ImagesList);
+
+    RefreshImagesList(dm);
+
+    gtk_container_add (GTK_CONTAINER (Scrolled), ImagesList);
     selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(ImagesList));
     gtk_tree_selection_set_mode(selection,GTK_SELECTION_SINGLE);
     model=gtk_tree_view_get_model(GTK_TREE_VIEW(ImagesList));
@@ -249,11 +269,11 @@ GtkWidget *LoadLocalImages(DockerImagesManege *dm)
                       G_CALLBACK (RemoveImages), 
 					  dm);
 
-	ButtonSave =      gtk_button_new_with_label(_("  Save      "));
-    gtk_box_pack_start(GTK_BOX(Hbox),ButtonSave, FALSE, FALSE,0);
-	g_signal_connect (ButtonSave, 
+	ButtonRefresh =  gtk_button_new_with_label(_("  Refresh "));
+    gtk_box_pack_start(GTK_BOX(Hbox),ButtonRefresh, FALSE, FALSE,0);
+	g_signal_connect (ButtonRefresh, 
 					 "clicked",
-                      G_CALLBACK (SaveImages), 
+                      G_CALLBACK (RefreshImages), 
 					  dm);
 
 	ButtonOperation = gtk_button_new_with_label(_("Operation"));

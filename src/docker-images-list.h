@@ -23,7 +23,8 @@ void ImagesListAppend(GtkWidget *list,
                       const gchar *ImagesSize,
                       const gchar *Color,
                       int Index,
-                      GtkTreeIter *Iter);
+                      GtkTreeIter *Iter,
+                      GtkListStore **ListStore);
 
 
 #endif
