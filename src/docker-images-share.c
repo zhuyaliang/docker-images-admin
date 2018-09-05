@@ -114,6 +114,7 @@ void SetLableFontType(GtkWidget *Lable ,
 }
 void SetWidgetStyle(GtkWidget * Widget,const char *Color,int FontSize)
 {
+    /*
     GdkRGBA Rgb;
     PangoFontDescription *font_desc;
 
@@ -124,4 +125,5 @@ void SetWidgetStyle(GtkWidget * Widget,const char *Color,int FontSize)
     pango_font_description_set_size (font_desc, FontSize * PANGO_SCALE);
     gtk_widget_modify_font (Widget, font_desc);
     pango_font_description_free (font_desc);
+*/
 }

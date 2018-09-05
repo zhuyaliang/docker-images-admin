@@ -8,6 +8,7 @@
 
 DockerClient *InitDocker(void);
 CURLcode      DockerGet(DockerClient *dc, const char *url,const char *Socket);
+CURLcode   DockerDelete(DockerClient *dc, const char *url);
 CURLcode DockerPost(DockerClient *dc,
                     const char *url,
                     const char *data,

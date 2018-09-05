@@ -26,15 +26,54 @@ static void InitCurl(DockerClient *dc,const char *Socket)
 DockerClient *InitDocker(void)
 {
 	DockerClient *dc;
-
-	/*get curl version*/
-	curl_version();
-	
- 	dc = (DockerClient *) malloc(sizeof(dc));
+	int i = 0;
+    int len = 0;
+    int count = 16;
+    char *p;
+    char  **ImageInfo;
+    
+    /*get curl version*/
+    
+    p =strstr(curl_version(),"libcurl");
+ 	if(p == NULL)
+    {
+        return NULL;
+    } 
+    while(count--)
+    {
+        if(p[i] == ' ')
+        {
+            p[i] = '\0';
+                break;
+        }   
+        i++;
+    }    
+    ImageInfo = g_strsplit(p,".",-1);
+    len = g_strv_length(ImageInfo);
+    if(len <= 1)
+    {   
+        return NULL;
+    }    
+    if(atoi(ImageInfo[1]) < 40)
+    {
+        MessageReport(_("Get Curl Version"),
+                      _("Curl version needs more than 7.40.0"),
+                      ERROR);
+    }   
+    if(access(DOCKERSOCK,F_OK) != 0)
+    {
+        
+        MessageReport(_("Init Docker"),
+                      _("Please start the docker service first."),
+                      ERROR);
+        return NULL;
+    }    
+    dc = (DockerClient *) malloc(sizeof(dc));
 	if(dc == NULL)
 	{
 		return NULL;
-	}			
+	}	
+
   	dc->Buffer = (struct buffer *) malloc(sizeof(struct buffer));
 	if(dc->Buffer == NULL)
 	{
@@ -98,4 +137,13 @@ CURLcode DockerPost(DockerClient *dc,
 
     return response;
 }
+CURLcode DockerDelete(DockerClient *dc, const char *url)
+{
+    CURLcode response;
 
+    InitCurl(dc,DOCKERSOCK);
+    curl_easy_setopt(dc->curl, CURLOPT_CUSTOMREQUEST,"DELETE");
+    response = Perform(dc, url);
+
+    return response;
+}

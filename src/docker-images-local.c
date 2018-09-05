@@ -38,19 +38,26 @@ static void RefreshImagesList( DockerImagesManege *dm )
 
 static void RemoveImages (GtkWidget *widget, gpointer data)
 {
-  GtkTreeIter iter;
-  DockerImagesManege *dm = (DockerImagesManege *)data;
+    GtkTreeIter iter;
+    gint i;
+    GtkTreePath *path;
+    CURLcode response;
+    char MsgBuf[128] = { 0 };
 
-  if (gtk_tree_selection_get_selected (dm->LocalImagesSelect, NULL, &iter))
+    DockerImagesManege *dm = (DockerImagesManege *)data;
+
+    if (gtk_tree_selection_get_selected (dm->LocalImagesSelect, NULL, &iter))
     {
-      gint i;
-      GtkTreePath *path;
-
-      path = gtk_tree_model_get_path (dm->LocalModel, &iter);
-      i = gtk_tree_path_get_indices (path)[0];
-	  printf(" i = %d\r\n",i);
-	  gtk_list_store_remove (GTK_LIST_STORE (dm->LocalModel), &iter);
-      gtk_tree_path_free (path);
+        path = gtk_tree_model_get_path (dm->LocalModel, &iter);
+        i = gtk_tree_path_get_indices (path)[0];
+        sprintf(MsgBuf,"%s/%s", "http://v1.25/images",dm->dll[i].ImagesId);
+	    response = DockerDelete(dm->dc, MsgBuf);
+	    if (response == CURLE_OK)
+        {
+            gtk_list_store_remove (GTK_LIST_STORE (dm->LocalModel), &iter);
+            printf("%s\r\n",GetBuffer(dm->dc));
+        }
+        gtk_tree_path_free (path);
     }
 }
 
@@ -66,7 +73,6 @@ static void RunImages (GtkWidget *widget, gpointer data)
 
       path = gtk_tree_model_get_path (dm->LocalModel, &iter);
       i = gtk_tree_path_get_indices (path)[0];
-	  printf(" i = %d\r\n",i);
 	  gtk_tree_path_free (path);
     }
 }
