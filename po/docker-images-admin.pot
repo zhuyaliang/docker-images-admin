@@ -1,0 +1,135 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the docker-images-admin package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: docker-images-admin\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-09-06 07:09+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: src/main.c:15
+msgid "Get Icon Fail"
+msgstr ""
+
+#: src/main.c:28
+msgid "docker images admin"
+msgstr ""
+
+#: src/main.c:52
+msgid "     Local Images   "
+msgstr ""
+
+#: src/main.c:56
+msgid "    Remote Images   "
+msgstr ""
+
+#: src/main.c:69 src/main.c:106
+msgid "open file"
+msgstr ""
+
+#: src/main.c:69
+msgid "Create pid file failed"
+msgstr ""
+
+#: src/main.c:106
+msgid "open pid file failed"
+msgstr ""
+
+#: src/main.c:111
+msgid "read file"
+msgstr ""
+
+#: src/main.c:111
+msgid "read pid file failed"
+msgstr ""
+
+#: src/docker-images-list.c:24
+msgid "images name"
+msgstr ""
+
+#: src/docker-images-list.c:37
+msgid "images tag"
+msgstr ""
+
+#: src/docker-images-list.c:50
+msgid " images id   "
+msgstr ""
+
+#: src/docker-images-list.c:63
+msgid "images size"
+msgstr ""
+
+#: src/docker-images-remote.c:68
+msgid "Pull Images"
+msgstr ""
+
+#: src/docker-images-remote.c:133 src/docker-images-remote.c:176
+#: src/docker-images-remote.c:189
+msgid "Connect Repository"
+msgstr ""
+
+#: src/docker-images-remote.c:177
+msgid "The address and port number can not be empty."
+msgstr ""
+
+#: src/docker-images-remote.c:225
+msgid "Address"
+msgstr ""
+
+#: src/docker-images-remote.c:234
+msgid "Port"
+msgstr ""
+
+#: src/docker-images-remote.c:242
+msgid "Connect"
+msgstr ""
+
+#: src/docker-images-remote.c:303 src/docker-images-local.c:271
+msgid " Remove  "
+msgstr ""
+
+#: src/docker-images-remote.c:310
+msgid " Push  "
+msgstr ""
+
+#: src/docker-images-remote.c:317
+msgid " Pull  "
+msgstr ""
+
+#: src/docker-images-local.c:20
+msgid "Get Images Fail"
+msgstr ""
+
+#: src/docker-images-local.c:20
+msgid "Curl GET Error"
+msgstr ""
+
+#: src/docker-images-local.c:278
+msgid "  Refresh "
+msgstr ""
+
+#: src/docker-images-local.c:285
+msgid "Operation"
+msgstr ""
+
+#: src/docker-images-local.c:292
+msgid "   Run      "
+msgstr ""
+
+#: src/docker-images-share.c:72
+msgid "_Return"
+msgstr ""
+
+#: src/docker-images-share.c:83
+msgid "Message"
+msgstr ""

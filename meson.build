@@ -114,6 +114,6 @@ configure_file(
 
 top_srcdir = include_directories('.')
 
-#subdir('po')
+subdir('po')
 subdir('src')
-#subdir('data')
+subdir('data')

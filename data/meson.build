@@ -1,4 +1,3 @@
-subdir('face')
 subdir('icon')
 subdir('hicolor')
 
