@@ -41,11 +41,30 @@ static void RefreshImagesList( DockerImagesManege *dm )
     }
 
 }    
+static CheckSubitem(DockerImagesManege *dm)
+{
+	gint i,j;
+	
+	i = dm->SelectIndex;
 
+	for(j = 0; j < LocalImagesCount; j++)
+	{
+		if(j != i)
+		{
+			if(strcmp(dm->dll[i].ImagesId,dm->dll[j].ImagesId) == 0)
+			{
+				return j;
+			}			
+		}			
+	}		
+	return -1;
+
+}		
 static void RemoveImages (GtkWidget *widget, gpointer data)
 {
     GtkTreeIter iter;
     gint i;
+	gint ret;
     GtkTreePath *path;
     CURLcode response;
     char MsgBuf[128] = { 0 };
@@ -56,7 +75,24 @@ static void RemoveImages (GtkWidget *widget, gpointer data)
     {
         path = gtk_tree_model_get_path (dm->LocalModel, &iter);
         i = gtk_tree_path_get_indices (path)[0];
-        sprintf(MsgBuf,"%s/%s", "http://v1.25/images",dm->dll[i].ImagesId);
+		dm->SelectIndex = i;
+		ret = CheckSubitem(dm);
+		if(ret < 0)
+		{
+        	sprintf(MsgBuf,
+					"%s/%s", 
+				    "http://v1.25/images",
+					dm->dll[i].ImagesId);
+		
+		}
+		else
+		{
+			sprintf(MsgBuf,
+				    "%s/%s:%s",
+					"http://v1.25/images",
+					dm->dll[i].ImagesName,
+					dm->dll[i].ImagesTag);
+		}		
 	    response = DockerDelete(dm->dc, MsgBuf);
 	    if (response == CURLE_OK)
         {
