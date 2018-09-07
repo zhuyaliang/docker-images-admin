@@ -12,6 +12,8 @@
 #include <time.h>
 #include <sys/time.h>
 #include <curl/curl.h>
+#include <json-c/json_tokener.h>
+#include <json-c/json.h>
 
 #include <libintl.h> // gettext 库支持  
 #include <locale.h> // 本地化locale的翻译支持  
@@ -42,8 +44,9 @@ typedef struct
 {
     char ImagesName[128];
     char ImagesTag[20];
-    char ImagesSzie[100];
+    char ImagesSize[30];
     char ImagesId[13];
+    char RepoDigests[128];
     GtkTreeIter Iter;
 }ImagesInfoList;
 
