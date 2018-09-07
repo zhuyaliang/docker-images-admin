@@ -3,7 +3,10 @@
 #include "docker-images-utils.h"
 
 static GtkListStore *ListStore = NULL;
+static int LocalImagesCount;
+static int DerivedFlag;
 static int GetImagesInfo(char *data,DockerImagesManege *dm);
+static void json_parse_array( json_object *jobj, const char *key,DockerImagesManege *dm);
 static void RefreshImagesList( DockerImagesManege *dm )
 {
     int i;
@@ -21,13 +24,13 @@ static void RefreshImagesList( DockerImagesManege *dm )
 	}		
     if(ListStore != NULL)
         gtk_list_store_clear(ListStore);
-    for( i = 0; i < len; i ++)
+    for( i = 0; i < LocalImagesCount; i ++)
     {
         ImagesListAppend(dm->LocalImagesList,
 						 dm->dll[i].ImagesName,
 						 dm->dll[i].ImagesTag,
 						 dm->dll[i].ImagesId,
-						 dm->dll[i].ImagesSzie,
+						 dm->dll[i].ImagesSize,
 						  "blue",
 						 i,
                          &dm->dll[i].Iter,
@@ -55,7 +58,6 @@ static void RemoveImages (GtkWidget *widget, gpointer data)
 	    if (response == CURLE_OK)
         {
             gtk_list_store_remove (GTK_LIST_STORE (dm->LocalModel), &iter);
-            printf("%s\r\n",GetBuffer(dm->dc));
         }
         gtk_tree_path_free (path);
     }
@@ -68,11 +70,11 @@ static void RunImages (GtkWidget *widget, gpointer data)
 
   if (gtk_tree_selection_get_selected (dm->LocalImagesSelect, NULL, &iter))
     {
-      gint i;
+      //gint i;
       GtkTreePath *path;
 
       path = gtk_tree_model_get_path (dm->LocalModel, &iter);
-      i = gtk_tree_path_get_indices (path)[0];
+      //i = gtk_tree_path_get_indices (path)[0];
 	  gtk_tree_path_free (path);
     }
 }
@@ -103,10 +105,10 @@ static int ExtractNameTag(int index,char *data,DockerImagesManege *dm)
 {
     char  **ImageInfo;
     int len = 0;
-    int length = 0;
     const char *tag;
+    printf("data = %s\r\n",data);
     
-    ImageInfo = g_strsplit(data,"[\"",-1);
+    ImageInfo = g_strsplit(data,":",-1);
     len = g_strv_length(ImageInfo);
     if(len == 1)
     {
@@ -122,91 +124,210 @@ static int ExtractNameTag(int index,char *data,DockerImagesManege *dm)
     }
     else
     {
-	    length = strlen(ImageInfo[1]);
-        ImageInfo[1][length -2] = '\0';
-        tag = g_strrstr(ImageInfo[1],":");
+        tag = g_strrstr(data,":");
 	    memset(dm->dll[index].ImagesTag,'\0',strlen(dm->dll[index].ImagesTag));
         memcpy(dm->dll[index].ImagesTag,&tag[1],(strlen(tag)-1));
         memset(dm->dll[index].ImagesName,'\0',strlen(dm->dll[index].ImagesName));
         memcpy(dm->dll[index].ImagesName,
-              ImageInfo[1],
-              (strlen(ImageInfo[1])-strlen(tag)));
+               data,
+              (strlen(data)-strlen(tag)));
     }
     g_strfreev(ImageInfo);
 	return len;
 }
 static int ExtractId(int index,char *data,DockerImagesManege *dm)
 {
-	if(strlen(data) < 78)
+    if(strlen(data) < 71 || strstr(data,"sha256:") == NULL)
         return -1;
     memset(dm->dll[index].ImagesId,'\0',strlen(dm->dll[index].ImagesId));
-    memcpy(dm->dll[index].ImagesId,&data[13],12);
-
+    memcpy(dm->dll[index].ImagesId,&data[7],12);
 	return 0;
 }
-static int ExtractSzie(int index,char *data,DockerImagesManege *dm)
+static int ExtractSzie(int index,int size,DockerImagesManege *dm)
 {
-    float size = 0.0;
-    char Sizebuf[24] = { 0 };
-    if(strlen(data) < 7)
+    char Sizebuf[30] = { 0 };
+    float _size = 0.0;
+    if(size <= 0)
         return -1;
-    size = atof(&data[7]);
+    
     if(size <= 1000)
     {
-        sprintf(Sizebuf,"%.2f %s",size, "K");
-        memset(dm->dll[index].ImagesSzie,'\0',strlen(dm->dll[index].ImagesSzie));
-        memcpy(dm->dll[index].ImagesSzie,Sizebuf,strlen(Sizebuf));
+        sprintf(Sizebuf,"%d %s",size, "K");
+        memset(dm->dll[index].ImagesSize,'\0',strlen(dm->dll[index].ImagesSize));
+        memcpy(dm->dll[index].ImagesSize,Sizebuf,strlen(Sizebuf));
     }    
     else if(size > 1000 && size <=1000000)
     {
-        sprintf(Sizebuf,"%.2f %s",size / 1000, "KB");
-        memset(dm->dll[index].ImagesSzie,'\0',strlen(dm->dll[index].ImagesSzie));
-        memcpy(dm->dll[index].ImagesSzie,Sizebuf,strlen(Sizebuf));
+        _size = size / 1000.00;
+        sprintf(Sizebuf,"%.2f %s",_size, "KB");
+        memset(dm->dll[index].ImagesSize,'\0',strlen(dm->dll[index].ImagesSize));
+        memcpy(dm->dll[index].ImagesSize,Sizebuf,strlen(Sizebuf));
     }
     else if(size > 1000000 && size <= 1000000000)
     {
-        sprintf(Sizebuf,"%.2f %s",(size / (1000 * 1000)), "MB");
-        memset(dm->dll[index].ImagesSzie,'\0',strlen(dm->dll[index].ImagesSzie));
-        memcpy(dm->dll[index].ImagesSzie,Sizebuf,strlen(Sizebuf));
+        _size = size / (1000.00 * 1000.00);
+        sprintf(Sizebuf,"%.2f %s",_size, "MB");
+        memset(dm->dll[index].ImagesSize,'\0',strlen(dm->dll[index].ImagesSize));
+        memcpy(dm->dll[index].ImagesSize,Sizebuf,strlen(Sizebuf));
     }    
     else 
     {
-        sprintf(Sizebuf,"%.2f %s",(size / (1000 * 1000 *1000)), "GB");
-        memset(dm->dll[index].ImagesSzie,'\0',strlen(dm->dll[index].ImagesSzie));
-        memcpy(dm->dll[index].ImagesSzie,Sizebuf,strlen(Sizebuf));
+        _size = size / (1000.00 * 1000.00 *1000.00);
+        sprintf(Sizebuf,"%.2f %s",_size, "GB");
+        memset(dm->dll[index].ImagesSize,'\0',strlen(dm->dll[index].ImagesSize));
+        memcpy(dm->dll[index].ImagesSize,Sizebuf,strlen(Sizebuf));
     
-    }    
+    } 
+    
 	return 0;
 }
-static int JsonSplit(int index,char *data,DockerImagesManege *dm)
+ /*printing the value corresponding to boolean, double, integer and strings*/
+static void print_json_value(json_object *jobj,const char *key,DockerImagesManege *dm)
 {
-    char  **ImageInfo;
+    char *RepoDigests; 
+    char *RepoTags;
+    char **ImageInfo;
     int len = 0;
-    char tmp[256] = { 0 };
 
-    ImageInfo = g_strsplit(data,",",-1);
-    len = g_strv_length(ImageInfo);
-    if(len < 10)
+    if(strcmp(key,"Id") == 0)
     {
-        return -1;
+        ExtractId(LocalImagesCount, json_object_get_string(jobj),dm);         
     }
-    if(ImageInfo[6][strlen(ImageInfo[6]) -1] != ']' &&
-       ImageInfo[7][strlen(ImageInfo[7]) -1] == ']')
+    else if(strcmp(key,"Size") == 0)
     {
-        sprintf(tmp,"%s%s",ImageInfo[6],"]");
-        ExtractNameTag(index,tmp,dm);
-        ExtractSzie(index,ImageInfo[9],dm);
-        ExtractId(index,ImageInfo[2],dm);
+        ExtractSzie(LocalImagesCount,json_object_get_int(jobj),dm); 
+        if(DerivedFlag == 1)
+        {   
+            LocalImagesCount++;
+            ExtractSzie(LocalImagesCount,json_object_get_int(jobj),dm);    
+            DerivedFlag = 0;
+        }
+    }    
+    else if(strcmp(key,"RepoDigests") == 0)
+    {
+        memset(dm->dll[LocalImagesCount].RepoDigests,
+              '\0',
+              strlen(dm->dll[LocalImagesCount].RepoDigests));
+        RepoDigests = json_object_get_string(jobj);
+        ImageInfo = g_strsplit(RepoDigests,"@sha256" ,-1);
+        len = g_strv_length(ImageInfo);
+        if(len <= 1)
+        {    
+            memcpy(dm->dll[LocalImagesCount].RepoDigests,"none:none",9);    
+        }
+        else
+        {    
+            sprintf(dm->dll[LocalImagesCount].RepoDigests,"%s:%s",ImageInfo[0],"none");
+        }
+        g_strfreev(ImageInfo); 
+    }    
+    else if(strcmp(key,"RepoTags") == 0)
+    {
+        RepoTags = json_object_get_string(jobj);
+        if(RepoTags == NULL)
+        {
+            ExtractNameTag(LocalImagesCount,dm->dll[LocalImagesCount].RepoDigests,dm);
+        }    
+        else
+            ExtractNameTag(LocalImagesCount,RepoTags,dm); 
+    } 
+}
+static void SetJsonArray(json_object *jobj,const char *key,DockerImagesManege *dm)
+{
+    memset(dm->dll[LocalImagesCount + 1].ImagesId,
+          '\0',
+          strlen(dm->dll[LocalImagesCount + 1].ImagesId));
+    memcpy(dm->dll[LocalImagesCount + 1].ImagesId,
+           dm->dll[LocalImagesCount ].ImagesId,
+           strlen(dm->dll[LocalImagesCount].ImagesId));
+    DerivedFlag = 1;
+    ExtractNameTag(LocalImagesCount + 1,json_object_get_string(jobj),dm);
+}    
+void json_parse(json_object *jobj,DockerImagesManege *dm); /*Forward Declaration*/
+static void json_parse_array( json_object *jobj, const char *key,DockerImagesManege *dm)
+{
+    
+    enum json_type type;
+    json_object *jarray; /*Simply get the array*/
+    int arraylen;
+    int i;
+    json_object * jvalue;
 
+    jarray = jobj;
+    if(key)
+    {
+        jarray = json_object_object_get(jobj, key); /*Getting the array if it is a key value pair*/
     }
-    else
-    {    
-        ExtractNameTag(index,ImageInfo[6],dm);
-        ExtractSzie(index,ImageInfo[8],dm);
-        ExtractId(index,ImageInfo[2],dm);
+    arraylen = json_object_array_length(jarray); /*Getting the length of the array*/
+
+    for (i=0; i< arraylen; i++)
+    {
+        jvalue = json_object_array_get_idx(jarray, i); /*Getting the array element at position i*/
+        type = json_object_get_type(jvalue);
+        if (type == json_type_array) 
+        {
+            json_parse_array(jvalue, NULL,dm);
+        }   
+        else if (type != json_type_object)
+        {
+            if(strcmp(key,"RepoTags") == 0 && i >=1)
+            {
+                SetJsonArray(jvalue,key,dm);
+            }   
+            else
+            {    
+                print_json_value(jvalue,key,dm);
+            }
+        }    
+        else 
+        {
+            json_parse(jvalue,dm);
+        }   
+  }
+}
+static void JsonSplit(char *data,DockerImagesManege *dm)
+{
+    json_object * jobj = json_tokener_parse(data);
+    json_parse(jobj,dm);
+}
+
+/*Parsing the json object*/
+void json_parse(json_object * jobj,DockerImagesManege *dm)
+{
+    enum json_type type;
+    json_object_object_foreach(jobj, key, val)  /*Passing through every array element*/
+    {
+        type = json_object_get_type(val);
+        if(strcmp(key,"Labels") == 0)
+        {
+            continue;
+        }    
+        switch (type)
+        {
+            case json_type_boolean:
+            case json_type_double:
+            case json_type_int:
+            case json_type_string:
+                print_json_value(val,key,dm);
+                break;
+            case json_type_object:
+                jobj = json_object_object_get(jobj, key);
+                json_parse(jobj,dm);
+                break;
+            case json_type_array:
+                json_parse_array(jobj, key,dm);
+                break;
+            case json_type_null:
+                if(strcmp(key,"RepoTags") == 0)
+                {
+                    print_json_value(val,key,dm);
+                }    
+                break;
+            default:
+                break;
+        }
     }
-	g_strfreev(ImageInfo); 
-    return len;
+
 }
 
 static int GetImagesInfo(char *data,DockerImagesManege *dm)
@@ -214,15 +335,25 @@ static int GetImagesInfo(char *data,DockerImagesManege *dm)
     char **ImageInfo;
     int len = 0;
     int j;
+    int ll = 0;
+
     
+    data[strlen(data)-2] = '\0'; 
     ImageInfo = g_strsplit(data,"{\"" ,-1);
     len = g_strv_length(ImageInfo);
-
+    
     for(j = 1 ; j < len ; j++)
     {
-        JsonSplit(j-1,ImageInfo[j],dm);
+        ImageInfo[j][0] = '{';
+        ImageInfo[j][1] = '\"';
+        ll = strlen(ImageInfo[j]);
+        if(ImageInfo[j][ll -1] != '}')
+            ImageInfo[j][ll -1] = '\0';
+        JsonSplit(ImageInfo[j],dm);
+        LocalImagesCount ++; 
     }	
 	g_strfreev(ImageInfo); 
+   
     return len - 1;
 }		
 GtkWidget *LoadLocalImages(DockerImagesManege *dm)
