@@ -91,7 +91,7 @@ gtk_deps = dependency('gtk+-3.0', version: gtk_req_version)
 #md_deps = dependency('mate-desktop-2.0')
 #crypt_deps = cc.find_library('crypt', required: true)
 curl_deps = cc.find_library('curl',required: true)
-
+json_deps = cc.find_library('json-c',required: true)
 # Configure data
 conf = configuration_data()
 conf.set_quoted('VERSION', meson.project_version())
@@ -114,6 +114,6 @@ configure_file(
 
 top_srcdir = include_directories('.')
 
-subdir('po')
+#subdir('po')
 subdir('src')
-subdir('data')
+#subdir('data')

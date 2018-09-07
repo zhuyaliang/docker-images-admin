@@ -25,7 +25,7 @@ account_user_src = gnome.gdbus_codegen(
 
 executable('images-admin',
   sources : sources,
-  dependencies : [gtk_deps,curl_deps],
+  dependencies : [gtk_deps,curl_deps,json_deps],
   include_directories: top_srcdir,
   install : true,
   install_dir : get_option('bindir')
