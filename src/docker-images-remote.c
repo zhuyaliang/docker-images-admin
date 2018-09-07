@@ -198,7 +198,7 @@ static int GetRepositoryImages (GtkWidget *widget, gpointer data)
 						 dm->dtl[i].ImagesName,
 						 dm->dtl[i].ImagesTag,
 						 dm->dtl[i].ImagesId,
-						 dm->dtl[i].ImagesSzie,
+						 dm->dtl[i].ImagesSize,
 						  "blue",
 						 i,
                          &dm->dtl[i].Iter,
