@@ -215,7 +215,7 @@ static int GetImagesInfo(char *data,DockerImagesManege *dm)
     int len = 0;
     int j;
     
-    ImageInfo = g_strsplit(data,"\"Containers\"" ,-1);
+    ImageInfo = g_strsplit(data,"{\"" ,-1);
     len = g_strv_length(ImageInfo);
 
     for(j = 1 ; j < len ; j++)
