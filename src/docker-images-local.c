@@ -330,27 +330,49 @@ void json_parse(json_object * jobj,DockerImagesManege *dm)
 
 }
 
+static int GetDelimiter(const char *data,char *Delimit)
+{
+    int i = 0;
+
+    while(1)
+    {
+        if(data[i+1] != ':')
+        {    
+            Delimit[i] = data[i+1];
+            i++;
+        }
+        else
+            break;
+    } 
+    
+    return i;
+}    
 static int GetImagesInfo(char *data,DockerImagesManege *dm)
 {
     char **ImageInfo;
+    char Delimit[20] = { 0 };
+    char paragraph[512] = { 0 };
     int len = 0;
     int j;
     int ll = 0;
 
     
-    data[strlen(data)-2] = '\0'; 
-    ImageInfo = g_strsplit(data,"{\"" ,-1);
+    data[strlen(data)-2] = '\0';
+    GetDelimiter(data,Delimit);
+    printf("Delimit = %s\r\n",Delimit);
+    ImageInfo = g_strsplit(data,Delimit ,-1);
     len = g_strv_length(ImageInfo);
     
     for(j = 1 ; j < len ; j++)
     {
-        ImageInfo[j][0] = '{';
-        ImageInfo[j][1] = '\"';
         ll = strlen(ImageInfo[j]);
         if(ImageInfo[j][ll -1] != '}')
             ImageInfo[j][ll -1] = '\0';
-        JsonSplit(ImageInfo[j],dm);
+        sprintf(paragraph,"%s%s",Delimit,ImageInfo[j]);
+        printf("ImageInfo[%d] = %s\r\n",j,paragraph);
+        JsonSplit(paragraph,dm);
         LocalImagesCount ++; 
+        memset(paragraph,'\0',strlen(paragraph));
     }	
 	g_strfreev(ImageInfo); 
    
