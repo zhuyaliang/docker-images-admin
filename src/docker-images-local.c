@@ -16,6 +16,7 @@ static void RefreshImagesList( DockerImagesManege *dm )
 	response = DockerGet(dm->dc, "http://v1.25/images/json",DOCKERSOCK);
 	if (response == CURLE_OK) 
 	{
+        LocalImagesCount = 0;
     	len = GetImagesInfo(GetBuffer(dm->dc),dm);
     }
 	else
