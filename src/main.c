@@ -9,7 +9,7 @@ static GdkPixbuf * GetAppIcon(void)
     GdkPixbuf *Pixbuf;
     GError    *Error = NULL;
 
-    Pixbuf = gdk_pixbuf_new_from_file("/usr/share/docker-admin/icon/docker-images-admin.jpg",&Error);
+    Pixbuf = gdk_pixbuf_new_from_file("/usr/share/mate-user-admin/icon/user-admin.png",&Error);
     if(!Pixbuf)
     {
         MessageReport(_("Get Icon Fail"),Error->message,ERROR);

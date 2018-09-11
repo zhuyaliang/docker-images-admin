@@ -12,7 +12,10 @@ static void RefreshImagesList( DockerImagesManege *dm )
     int i;
 	int len = 0;
 	CURLcode response;
-
+    if(ListStore != NULL)
+    {    
+        gtk_list_store_clear(ListStore);
+    }    
 	response = DockerGet(dm->dc, "http://v1.25/images/json",DOCKERSOCK);
 	if (response == CURLE_OK) 
 	{
@@ -23,8 +26,6 @@ static void RefreshImagesList( DockerImagesManege *dm )
 	{
 		MessageReport(_("Get Images Fail"),_("Curl GET Error"),ERROR);
 	}		
-    if(ListStore != NULL)
-        gtk_list_store_clear(ListStore);
     for( i = 0; i < LocalImagesCount; i ++)
     {
         ImagesListAppend(dm->LocalImagesList,
@@ -86,6 +87,56 @@ static void RefreshImages (GtkWidget *widget, gpointer data)
     RefreshImagesList(dm);
 }
 
+static void CreateOperateWin(DockerImagesManege *dm)
+{
+    GtkWidget *OpreateWindow;
+    GtkWidget *MainVbox;
+    GtkWidget *Hbox;
+    GtkWidget *FrameHorz;
+    GtkWidget *PushButton;
+    GtkWidget *TagButton;
+    GtkWidget *LoadButton;
+    GtkWidget *SaveButton;
+
+    OpreateWindow = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    gtk_window_set_title(GTK_WINDOW(OpreateWindow),_("Opreate Images"));
+    gtk_window_set_default_size(GTK_WINDOW(OpreateWindow), 230, 150);
+    gtk_window_set_position(GTK_WINDOW(OpreateWindow), GTK_WIN_POS_MOUSE); 
+    g_signal_connect (OpreateWindow, "destroy",
+                      G_CALLBACK (gtk_widget_destroyed),
+                      &OpreateWindow);
+
+    gtk_container_set_border_width (GTK_CONTAINER (OpreateWindow), 10);
+
+    MainVbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+    gtk_container_add (GTK_CONTAINER (OpreateWindow),MainVbox);
+
+    FrameHorz = gtk_frame_new (_("Supported operations"));
+    gtk_frame_set_label_align(GTK_FRAME(FrameHorz),0.5,0.3);
+    Hbox = gtk_button_box_new (GTK_ORIENTATION_HORIZONTAL);
+    gtk_container_set_border_width (GTK_CONTAINER (Hbox), 5);
+    gtk_container_add (GTK_CONTAINER (FrameHorz), Hbox);
+    gtk_button_box_set_layout (GTK_BUTTON_BOX (Hbox),GTK_BUTTONBOX_SPREAD);
+    gtk_box_set_spacing (GTK_BOX (Hbox),40);
+
+    PushButton = gtk_button_new_with_label (_("Push"));
+    gtk_container_add (GTK_CONTAINER (Hbox), PushButton);
+
+    TagButton = gtk_button_new_with_label (_("Rename"));
+    gtk_container_add (GTK_CONTAINER (Hbox), TagButton);
+
+    LoadButton = gtk_button_new_with_label (_("Load"));
+    gtk_container_add (GTK_CONTAINER (Hbox), LoadButton);
+
+    SaveButton = gtk_button_new_with_label (_("Save"));
+    gtk_container_add (GTK_CONTAINER (Hbox), SaveButton);
+    
+    gtk_box_pack_start (GTK_BOX (MainVbox),
+                        FrameHorz,
+                        TRUE, TRUE, 0);
+    gtk_widget_show_all (OpreateWindow);
+    //gtk_widget_destroy (window);
+}    
 static void OperationImages (GtkWidget *widget, gpointer data)
 {
     GtkTreeIter iter;
@@ -98,8 +149,9 @@ static void OperationImages (GtkWidget *widget, gpointer data)
 
         path = gtk_tree_model_get_path (dm->LocalModel, &iter);
         i = gtk_tree_path_get_indices (path)[0];
-	    printf(" i = %d\r\n",i);
-	    gtk_tree_path_free (path);
+	    dm->SelectIndex = i;
+        CreateOperateWin(dm);
+        gtk_tree_path_free (path);
     }
 }
 static int ExtractNameTag(int index,char *data,DockerImagesManege *dm)
@@ -107,7 +159,6 @@ static int ExtractNameTag(int index,char *data,DockerImagesManege *dm)
     char  **ImageInfo;
     int len = 0;
     const char *tag;
-    printf("data = %s\r\n",data);
     
     ImageInfo = g_strsplit(data,":",-1);
     len = g_strv_length(ImageInfo);
@@ -360,7 +411,6 @@ static int GetImagesInfo(char *data,DockerImagesManege *dm)
     
     data[strlen(data)-2] = '\0';
     GetDelimiter(data,Delimit);
-    printf("Delimit = %s\r\n",Delimit);
     ImageInfo = g_strsplit(data,Delimit ,-1);
     len = g_strv_length(ImageInfo);
     
@@ -370,7 +420,6 @@ static int GetImagesInfo(char *data,DockerImagesManege *dm)
         if(ImageInfo[j][ll -1] != '}')
             ImageInfo[j][ll -1] = '\0';
         sprintf(paragraph,"%s%s",Delimit,ImageInfo[j]);
-        printf("ImageInfo[%d] = %s\r\n",j,paragraph);
         JsonSplit(paragraph,dm);
         LocalImagesCount ++; 
         memset(paragraph,'\0',strlen(paragraph));

@@ -52,22 +52,23 @@ typedef struct
 
 typedef struct
 {
-    ImagesInfoList dll[200];
-    ImagesInfoList dtl[200];
-    char Address[128];
-    char Port[10];
-	DockerClient  *dc;
-    GtkWidget     *MainWindow;
-    GtkWidget     *NoteBook;
-    GtkListStore  *ListSTore;
-    GtkWidget     *LocalImagesList;
-    GtkWidget     *RemoteImagesList;
-    GtkTreeModel  *LocalModel;
-    GtkTreeModel  *RemoteModel;
+    ImagesInfoList   dll[200];
+    ImagesInfoList   dtl[200];
+    char             Address[128];
+    char             Port[10];
+    int              SelectIndex;
+	DockerClient     *dc;
+    GtkWidget        *MainWindow;
+    GtkWidget        *NoteBook;
+    GtkListStore     *ListSTore;
+    GtkWidget        *LocalImagesList;
+    GtkWidget        *RemoteImagesList;
+    GtkTreeModel     *LocalModel;
+    GtkTreeModel     *RemoteModel;
 	GtkTreeSelection *LocalImagesSelect;
 	GtkTreeSelection *RemoteImagesSelect;
-    GtkWidget *EntryAddress;
-    GtkWidget *EntryPort;
+    GtkWidget        *EntryAddress;
+    GtkWidget        *EntryPort;
 }DockerImagesManege;
 
 GtkWidget *WindowLogin;

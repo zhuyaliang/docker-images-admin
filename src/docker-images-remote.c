@@ -2,25 +2,24 @@
 #include "docker-images-list.h"
 #include "docker-images-utils.h"
 
-
+static GtkListStore *RemoteListStore = NULL;
 static void RemoveImages (GtkWidget *widget, gpointer data)
 {
-  GtkTreeIter iter;
-  DockerImagesManege *dm = (DockerImagesManege *)data;
+    GtkTreeIter iter;
+    DockerImagesManege *dm = (DockerImagesManege *)data;
 
-  if (gtk_tree_selection_get_selected (dm->LocalImagesSelect, NULL, &iter))
+    if (gtk_tree_selection_get_selected (dm->LocalImagesSelect, NULL, &iter))
     {
-      gint i;
-      GtkTreePath *path;
+        gint i;
+        GtkTreePath *path;
 
-      path = gtk_tree_model_get_path (dm->LocalModel, &iter);
-      i = gtk_tree_path_get_indices (path)[0];
-	  printf(" i = %d\r\n",i);
-	  gtk_list_store_remove (GTK_LIST_STORE (dm->LocalModel), &iter);
-      gtk_tree_path_free (path);
+        path = gtk_tree_model_get_path (dm->LocalModel, &iter);
+        i = gtk_tree_path_get_indices (path)[0];
+	    gtk_list_store_remove (GTK_LIST_STORE (dm->LocalModel), &iter);
+        gtk_tree_path_free (path);
     }
 }
-
+/*
 static void PushImages (GtkWidget *widget, gpointer data)
 {
   GtkTreeIter iter;
@@ -38,37 +37,48 @@ static void PushImages (GtkWidget *widget, gpointer data)
       gtk_tree_path_free (path);
     }
 }
+*/
+static gpointer AsyncPullImages(gpointer data)
+{
+    CURLcode response;
+    char MsgBuf[256] = { 0 };
+    DockerImagesManege *dm = (DockerImagesManege *)data;
+    int i;
 
+    i = dm->SelectIndex;
+    sprintf(MsgBuf,"fromImage=%s:%s/%s:%s",
+                              dm->Address,
+                              dm->Port,
+                              dm->dtl[i].ImagesName,
+                              dm->dtl[i].ImagesTag);
+    response = DockerPost(dm->dc,"http:/v1.24/images/create?",MsgBuf,NULL);
+    if (response == CURLE_OK)
+    {
+        MessageReport(_("Pull Images"),
+                      _("Images pull successful,please refresh the local list."),
+                      INFOR);
+    }
+    else
+    {
+        MessageReport(_("Pull Images"),
+                      curl_easy_strerror(response),
+                      ERROR);
+    }   
+    return FALSE;
+}    
 static void PullImages (GtkWidget *widget, gpointer data)
 {
     GtkTreeIter iter;
-    CURLcode response;
-    char MsgBuf[256] = { 0 };
     DockerImagesManege *dm = (DockerImagesManege *)data;
 
     if (gtk_tree_selection_get_selected (dm->RemoteImagesSelect, NULL, &iter))
     {
         gint i;
         GtkTreePath *path;
-
         path = gtk_tree_model_get_path (dm->RemoteModel, &iter);
         i = gtk_tree_path_get_indices (path)[0];
-        sprintf(MsgBuf,"fromImage=%s:%s/%s:%s",
-                                  dm->Address,
-                                  dm->Port,
-                                  dm->dtl[i].ImagesName,
-                                  dm->dtl[i].ImagesTag);
-        response = DockerPost(dm->dc,"http:/v1.24/images/create?",MsgBuf,NULL);
-        if (response == CURLE_OK)
-        {
-            printf("return = %s\r\n",GetBuffer(dm->dc));
-        }
-        else
-        {
-            MessageReport(_("Pull Images"),
-                          curl_easy_strerror(response),
-                          ERROR);
-        }    
+        dm->SelectIndex = i;
+        g_thread_new("pullimages",(GThreadFunc)AsyncPullImages,(gpointer)data);
         gtk_tree_path_free (path);
     }
 }
@@ -147,7 +157,8 @@ static int GetRemoteImagesInfo (char *data,DockerImagesManege *dm)
 
     ImageInfo = g_strsplit(data,"," ,-1);
     len = g_strv_length(ImageInfo);
-
+   
+    ImagesCount = 0;
     for(j = 1 ; j < len ; j++)
     {
         GetImagesTag(ImageInfo[j],dm);
@@ -177,6 +188,10 @@ static int GetRepositoryImages (GtkWidget *widget, gpointer data)
                       _("The address and port number can not be empty."),
                       ERROR);
         return -1;
+    }   
+    if(RemoteListStore != NULL)
+    {    
+        gtk_list_store_clear(RemoteListStore);
     }    
     sprintf(MsgBuf,"http://%s:%s/v2/_catalog",Address,Port);
     response = DockerGet(dm->dc,MsgBuf,NULL);
@@ -202,7 +217,7 @@ static int GetRepositoryImages (GtkWidget *widget, gpointer data)
 						  "blue",
 						 i,
                          &dm->dtl[i].Iter,
-                         NULL);
+                         &RemoteListStore);
     
     }
    
@@ -285,7 +300,7 @@ GtkWidget *LoadRemoteImages(DockerImagesManege *dm)
     GtkWidget *Hbox1;
     GtkWidget *ButtonRemove;
     GtkWidget *ButtonPull;
-    GtkWidget *ButtonPush;
+//    GtkWidget *ButtonPush;
 
     Vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
     gtk_widget_set_size_request (Vbox,-1,260);
@@ -306,14 +321,14 @@ GtkWidget *LoadRemoteImages(DockerImagesManege *dm)
 					 "clicked",
                       G_CALLBACK (RemoveImages), 
 					  dm);
-
+/*
 	ButtonPush =    gtk_button_new_with_label(_(" Push  "));
     gtk_box_pack_start(GTK_BOX(Hbox1),ButtonPush, FALSE, FALSE,0);
 	g_signal_connect (ButtonPush, 
 					 "clicked",
                       G_CALLBACK (PushImages), 
 					  dm);
-
+*/
 	ButtonPull =    gtk_button_new_with_label(_(" Pull  "));
     gtk_box_pack_start(GTK_BOX(Hbox1),ButtonPull, FALSE, FALSE,0);
 	g_signal_connect (ButtonPull, 
