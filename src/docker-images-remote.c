@@ -3,41 +3,41 @@
 #include "docker-images-utils.h"
 
 static GtkListStore *RemoteListStore = NULL;
+static void RemoveRemoteImages(DockerImagesManege *dm)
+{
+    const Digest[64] = { 0 };
+    char MsgBuf[1256] = { 0 };
+    int i;
+    CURLcode response;
+     
+    i = dm->SelectIndex;
+    sprintf(MsgBuf,"http://%s:%s/v2/%s/manifests/%s",
+                              dm->Address,
+                              dm->Port,
+                              dm->dtl[i].ImagesName,
+                              dm->dtl[i].ImagesTag);
+    response = DockerQueryDigest(dm->dc,MsgBuf,Digest);
+    if (response == CURLE_OK)
+    {
+        printf("GetBuffer(dm->dc) = %s\r\n",Digest);
+    }
+}    
 static void RemoveImages (GtkWidget *widget, gpointer data)
 {
     GtkTreeIter iter;
     DockerImagesManege *dm = (DockerImagesManege *)data;
-
-    if (gtk_tree_selection_get_selected (dm->LocalImagesSelect, NULL, &iter))
+    if (gtk_tree_selection_get_selected (dm->RemoteImagesSelect, NULL, &iter))
     {
         gint i;
         GtkTreePath *path;
-
-        path = gtk_tree_model_get_path (dm->LocalModel, &iter);
+        path = gtk_tree_model_get_path (dm->RemoteModel, &iter);
         i = gtk_tree_path_get_indices (path)[0];
-	    gtk_list_store_remove (GTK_LIST_STORE (dm->LocalModel), &iter);
+        dm->SelectIndex = i;
+        RemoveRemoteImages(dm);
+	    gtk_list_store_remove (GTK_LIST_STORE (dm->RemoteModel), &iter);
         gtk_tree_path_free (path);
     }
 }
-/*
-static void PushImages (GtkWidget *widget, gpointer data)
-{
-  GtkTreeIter iter;
-  DockerImagesManege *dm = (DockerImagesManege *)data;
-
-  if (gtk_tree_selection_get_selected (dm->LocalImagesSelect, NULL, &iter))
-    {
-      gint i;
-      GtkTreePath *path;
-
-      path = gtk_tree_model_get_path (dm->LocalModel, &iter);
-      i = gtk_tree_path_get_indices (path)[0];
-	  printf(" i = %d\r\n",i);
-	  gtk_list_store_remove (GTK_LIST_STORE (dm->LocalModel), &iter);
-      gtk_tree_path_free (path);
-    }
-}
-*/
 static gpointer AsyncPullImages(gpointer data)
 {
     CURLcode response;

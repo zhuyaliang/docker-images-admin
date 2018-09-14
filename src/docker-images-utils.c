@@ -111,6 +111,31 @@ CURLcode DockerGet(DockerClient *dc, const char *url,const char *Socket)
   InitCurl(dc,Socket);
   return Perform(dc,url);
 }
+static size_t realsize;
+static size_t HeaderCallback(char *buf, size_t size,
+                            size_t nitems, void *data)
+{
+    size_t datasize;
+  	datasize = size * nitems;
+    
+    if(strstr(buf,"Docker-Content-Digest") != NULL)
+    {   
+        memcpy((char *)data,&buf[30],strlen(buf)-30);
+        realsize = 1;
+    }    
+  	return datasize;
+}
+CURLcode DockerQueryDigest(DockerClient *dc, const char *url,char *Return) 
+{
+	CURLcode response;
+    InitCurl(dc,NULL);
+    curl_easy_setopt(dc->curl, CURLOPT_HEADER, 1L);
+    curl_easy_setopt(dc->curl,CURLOPT_HEADERFUNCTION,HeaderCallback);
+    curl_easy_setopt(dc->curl, CURLOPT_HEADERDATA, Return);
+    response = Perform(dc,url);
+    
+    return response;
+}
 char *GetBuffer(DockerClient *dc) 
 {
   return dc->Buffer->DockerData;
