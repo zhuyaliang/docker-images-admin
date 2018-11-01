@@ -10,10 +10,18 @@ DockerClient *InitDocker(void);
 CURLcode      DockerGet(DockerClient *dc, const char *url,const char *Socket);
 CURLcode      DockerDelete(DockerClient *dc, const char *url);
 CURLcode      DockerQueryDigest(DockerClient *dc, const char *url,char *Return);
+CURLcode DockerPush(DockerClient *dc, const char *url, const char *data);
 CURLcode DockerPost(DockerClient *dc,
                     const char *url,
                     const char *data,
                     const char *head);
 char         *GetBuffer(DockerClient *dc); 
-
+CURLcode DockerAuthentication(DockerClient *dc,
+                              const char *url,
+                              const char *name,
+                              const char *pass);
+CURLcode DockerDeleteRepos(DockerClient *dc, 
+                           const char *url,
+                           const char *name,
+                           const char *pass);
 #endif 

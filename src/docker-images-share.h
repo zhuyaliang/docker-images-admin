@@ -42,11 +42,11 @@ typedef struct docker
 
 typedef struct
 {
-    char ImagesName[128];
-    char ImagesTag[20];
-    char ImagesSize[30];
+    char ImagesName[148];
+    char ImagesTag[24];
+    char ImagesSize[34];
     char ImagesId[13];
-    char RepoDigests[128];
+    char RepoDigests[148];
     GtkTreeIter Iter;
 }ImagesInfoList;
 
@@ -55,10 +55,15 @@ typedef struct
     ImagesInfoList   dll[200];
     ImagesInfoList   dtl[200];
     char             Address[128];
+    char             Name[128];
     char             Port[10];
+    char             Pass[128];
+    char             Tmp[256];
     int              SelectIndex;
 	DockerClient     *dc;
     GtkWidget        *MainWindow;
+    GtkWidget        *OpreateWindow;
+    GtkWidget        *PushWindow;
     GtkWidget        *NoteBook;
     GtkListStore     *ListSTore;
     GtkWidget        *LocalImagesList;
@@ -69,10 +74,13 @@ typedef struct
 	GtkTreeSelection *RemoteImagesSelect;
     GtkWidget        *EntryAddress;
     GtkWidget        *EntryPort;
+    GtkWidget        *EntryName;
+    GtkWidget        *EntryPass;
+    GtkWidget        *EntryProject;
 }DockerImagesManege;
 
 GtkWidget *WindowLogin;
-
+GCond Cond;
 gboolean on_window_quit (GtkWidget *widget,
                          GdkEvent *event,
                          gpointer user_data);
@@ -84,4 +92,11 @@ void SetLableFontType(GtkWidget *Lable,
 					  const char *Word);
 
 void SetWidgetStyle(GtkWidget * Widget,const char *Color,int FontSize);
+int CheckEmpty(GtkWidget *EntryWidget);
+int CheckNetwork(const char *ip,const char *port);
+int ChangeTag(DockerClient *dc, 
+              const char *ip,
+              const char *layer,
+              const char *name,
+              const char *tag);
 #endif

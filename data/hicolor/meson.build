@@ -1,9 +1,9 @@
 actions_icons = [
-  ['16x16', 'docker-images-admin.jpg'],
-  ['22x22', 'docker-images-admin.jpg'],
-  ['24x24', 'docker-images-admin.jpg'],
-  ['32x32', 'docker-images-admin.jpg'],
-  ['48x48', 'docker-images-admin.jpg']
+  ['16x16', 'user-admin.png'],
+  ['22x22', 'user-admin.png'],
+  ['24x24', 'user-admin.png'],
+  ['32x32', 'user-admin.png'],
+  ['48x48', 'user-admin.png']
 ]
 
 foreach icon: actions_icons

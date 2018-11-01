@@ -7,6 +7,7 @@ sources = [
 'docker-images-remote.c',  
 'docker-images-list.c',   
 'docker-images-utils.c',   
+'docker-images-json.c',   
 ]
 
 account_src = gnome.gdbus_codegen(

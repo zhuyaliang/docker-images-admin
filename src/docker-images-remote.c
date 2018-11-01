@@ -1,25 +1,25 @@
 #include "docker-images-remote.h"
 #include "docker-images-list.h"
 #include "docker-images-utils.h"
+#include "docker-images-json.h"
 
 static GtkListStore *RemoteListStore = NULL;
 static void RemoveRemoteImages(DockerImagesManege *dm)
 {
-    const Digest[64] = { 0 };
     char MsgBuf[1256] = { 0 };
     int i;
     CURLcode response;
      
     i = dm->SelectIndex;
-    sprintf(MsgBuf,"http://%s:%s/v2/%s/manifests/%s",
+    sprintf(MsgBuf,"http://%s:%s/api/repositories/%s/tags/%s",
                               dm->Address,
                               dm->Port,
                               dm->dtl[i].ImagesName,
                               dm->dtl[i].ImagesTag);
-    response = DockerQueryDigest(dm->dc,MsgBuf,Digest);
+    response = DockerDeleteRepos(dm->dc,MsgBuf,dm->Name,dm->Pass);
     if (response == CURLE_OK)
     {
-        printf("GetBuffer(dm->dc) = %s\r\n",Digest);
+        printf("GetBuffer(dm->dc) = %s\r\n",GetBuffer(dm->dc));
     }
 }    
 static void RemoveImages (GtkWidget *widget, gpointer data)
@@ -83,60 +83,43 @@ static void PullImages (GtkWidget *widget, gpointer data)
     }
 }
 static int ImagesCount;
-static void WriteData(const char *name,const char *tag,DockerImagesManege *dm)
+static void WriteData(gpointer tag,gpointer data)
 {
-    memset(dm->dtl[ImagesCount].ImagesName,
-          '\0',
-          strlen(dm->dtl[ImagesCount].ImagesName));
-    memcpy(dm->dtl[ImagesCount].ImagesName,name,strlen(name));
+    DockerImagesManege *dm = (DockerImagesManege *)data;
 
     memset(dm->dtl[ImagesCount].ImagesTag,
           '\0',strlen(dm->dtl[ImagesCount].ImagesTag));
     memcpy(dm->dtl[ImagesCount].ImagesTag,tag,strlen(tag));
     ImagesCount++;
+    memset(dm->dtl[ImagesCount].ImagesName,
+           '\0',
+          strlen(dm->dtl[ImagesCount].ImagesName));
+    
+    memcpy(dm->dtl[ImagesCount].ImagesName,
+           dm->dtl[ImagesCount-1].ImagesName,    
+           strlen(dm->dtl[ImagesCount-1].ImagesName));
 
 }    
-static int AnalysisData(char *data,DockerImagesManege *dm)
+static int GetImagesTag(char *ImagesName,DockerImagesManege *dm)
 {
-    char **ImageInfo;
-    int len = 0;
-    int j,i;
-
-    ImageInfo = g_strsplit(data,"\"" ,-1);
-    len = g_strv_length(ImageInfo);
-    if(len < 9 )
-    {
-        return -1;
-    }    
-    if(len % 2 == 0)
-    {
-        return -1;
-    }    
-    i = (len - 9) / 2 + 1;
-    for(j = 0 ; j < i ; j++)
-    {
-        WriteData(ImageInfo[3],ImageInfo[7+j*2],dm);
-    }
-    return 0;
-}    
-static int GetImagesTag(char *data,DockerImagesManege *dm)
-{
-    char **ImageInfo;
     CURLcode response;
-    int len = 0;
+    GHashTable *hash;
+    char tmp[2048] = { 0 };
     char MsgBuf[228] = { 0 };
 
-    ImageInfo = g_strsplit(data,"\"" ,-1);
-    len = g_strv_length(ImageInfo);
-    if(len <= 1)
-    {
-        return -1;
-    }    
-    sprintf(MsgBuf,"http://%s:%s/v2/%s/tags/list",dm->Address,dm->Port,ImageInfo[1]);
-    response = DockerGet(dm->dc,MsgBuf,NULL);
+    sprintf(MsgBuf,"http://%s:%s/api/repositories/%s/tags/",
+           dm->Address,dm->Port,ImagesName);
+    response = DockerAuthentication(dm->dc,MsgBuf,dm->Name,dm->Pass);
     if (response == CURLE_OK)
     {
-        AnalysisData(GetBuffer(dm->dc),dm);
+        memset(dm->dtl[ImagesCount].ImagesName,
+               '\0',
+              strlen(dm->dtl[ImagesCount].ImagesName));
+        memcpy(dm->dtl[ImagesCount].ImagesName,ImagesName,strlen(ImagesName));
+        sprintf(tmp,"{\"\":%s}",GetBuffer(dm->dc));
+        hash = AnalyticJson(tmp);
+        g_slist_foreach((GSList*)g_hash_table_lookup(hash,"name"),
+                        (GFunc)WriteData, dm);
     }
     else
     {
@@ -145,27 +128,34 @@ static int GetImagesTag(char *data,DockerImagesManege *dm)
                       ERROR);
         return -1;
     }
-    g_strfreev(ImageInfo);
     
     return 0;
 }    
+static void GetValue(gpointer value, gpointer data)
+{
+    DockerImagesManege *dm = (DockerImagesManege *)data;
+    
+    GetImagesTag(value,dm);
+
+}
 static int GetRemoteImagesInfo (char *data,DockerImagesManege *dm)
 {
-    char **ImageInfo;
-    int len = 0;
-    int j;
-
-    ImageInfo = g_strsplit(data,"," ,-1);
-    len = g_strv_length(ImageInfo);
-   
-    ImagesCount = 0;
-    for(j = 1 ; j < len ; j++)
+    GHashTable *hash;
+    hash = AnalyticJson(data);
+    g_slist_foreach((GSList*)g_hash_table_lookup(hash,"repository_name"),
+                    (GFunc)GetValue, dm);
+   // g_hash_table_destroy(hash);
+}    
+static int IsEmpty(const char *str)
+{
+    if(strlen(str) <= 0)
     {
-        GetImagesTag(ImageInfo[j],dm);
-    }
-    g_strfreev(ImageInfo);
-    return len - 1;
-
+        MessageReport(_("Connect Repository"),
+                      _("Input parameter can not be empty."),
+                      ERROR);
+        return -1;
+    }    
+    return 0;
 }    
 static int GetRepositoryImages (GtkWidget *widget, gpointer data)
 {
@@ -173,30 +163,44 @@ static int GetRepositoryImages (GtkWidget *widget, gpointer data)
     int i;
     CURLcode response;
     const char *Address;
+    const char *Name;
+    const char *Pass;
     const char *Port;
     char MsgBuf[128] = { 0 };
 
     Address = gtk_entry_get_text(GTK_ENTRY(dm->EntryAddress));
+    if(IsEmpty(Address) < 0)
+        return -1;    
     memset(dm->Address,'\0',sizeof(dm->Address));
     memcpy(dm->Address,Address,strlen(Address));
+    
     Port    = gtk_entry_get_text(GTK_ENTRY(dm->EntryPort)); 
     memset(dm->Port,'\0',sizeof(dm->Port));
     memcpy(dm->Port,Port,strlen(Port));
-    if(strlen(Address) <= 0 || strlen(Port) <= 0)
-    {
-        MessageReport(_("Connect Repository"),
-                      _("The address and port number can not be empty."),
-                      ERROR);
-        return -1;
-    }   
+    
+    Pass    = gtk_entry_get_text(GTK_ENTRY(dm->EntryPass)); 
+    if(IsEmpty(Pass) < 0)
+        return -1;    
+    memset(dm->Pass,'\0',sizeof(dm->Pass));
+    memcpy(dm->Pass,Pass,strlen(Pass));
+  
+    Name    = gtk_entry_get_text(GTK_ENTRY(dm->EntryName)); 
+    if(IsEmpty(Name) < 0)
+        return -1;    
+    memset(dm->Name,'\0',sizeof(dm->Name));
+    memcpy(dm->Name,Name,strlen(Name));
+    
+    
     if(RemoteListStore != NULL)
     {    
         gtk_list_store_clear(RemoteListStore);
     }    
-    sprintf(MsgBuf,"http://%s:%s/v2/_catalog",Address,Port);
-    response = DockerGet(dm->dc,MsgBuf,NULL);
+    sprintf(MsgBuf,"http://%s:%s/api/search?q=",Address,Port);
+
+    response = DockerAuthentication(dm->dc,MsgBuf,Name,Pass);
     if (response == CURLE_OK)
     {
+        /* Start parsing data */
         GetRemoteImagesInfo(GetBuffer(dm->dc),dm);
     }
     else
@@ -227,8 +231,12 @@ static void ConnectRepository(GtkWidget *Box,DockerImagesManege *dm)
 {
     GtkWidget *Table;
     GtkWidget *LabelAddress;
+    GtkWidget *LabelName;
+    GtkWidget *EntryName;
     GtkWidget *EntryAddress;
     GtkWidget *LabelPort;
+    GtkWidget *LabelPass;
+    GtkWidget *EntryPass;
     GtkWidget *EntryPort;
     GtkWidget *ButtonConnect;
 
@@ -254,8 +262,26 @@ static void ConnectRepository(GtkWidget *Box,DockerImagesManege *dm)
     dm->EntryPort = EntryPort;
     gtk_grid_attach(GTK_GRID(Table) ,EntryPort , 3 , 0 , 1 , 1);
 	
+    LabelName = gtk_label_new(NULL);
+    SetLableFontType(LabelName,"red",13,_("Name"));
+    gtk_grid_attach(GTK_GRID(Table) , LabelName, 0 , 1 , 1 , 1);
+
+    EntryName = gtk_entry_new();
+    gtk_entry_set_max_length(GTK_ENTRY(EntryName),24);
+    dm->EntryName = EntryName;
+    gtk_grid_attach(GTK_GRID(Table) ,EntryName , 1 , 1 , 1 , 1);
+
+    LabelPass = gtk_label_new(NULL);
+    SetLableFontType(LabelPass,"red",13,_("Pass"));
+    gtk_grid_attach(GTK_GRID(Table) , LabelPass, 2 , 1 , 1 , 1);
+
+    EntryPass = gtk_entry_new();
+    gtk_entry_set_max_length(GTK_ENTRY(EntryPass),20);
+    dm->EntryPass = EntryPass;
+    gtk_grid_attach(GTK_GRID(Table) ,EntryPass , 3 , 1 , 1 , 1);
+
     ButtonConnect    = gtk_button_new_with_label(_("Connect"));
-    gtk_grid_attach(GTK_GRID(Table) ,ButtonConnect, 0 , 1 , 1 , 1);
+    gtk_grid_attach(GTK_GRID(Table) ,ButtonConnect, 0 , 2 , 1 , 1);
 	
 	g_signal_connect (ButtonConnect, 
 					 "clicked",
@@ -303,7 +329,7 @@ GtkWidget *LoadRemoteImages(DockerImagesManege *dm)
 //    GtkWidget *ButtonPush;
 
     Vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
-    gtk_widget_set_size_request (Vbox,-1,260);
+    gtk_widget_set_size_request (Vbox,-1,320);
 	
     Hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL,6);
     gtk_box_pack_start(GTK_BOX(Vbox),Hbox,FALSE,FALSE,6);
@@ -328,12 +354,12 @@ GtkWidget *LoadRemoteImages(DockerImagesManege *dm)
 					 "clicked",
                       G_CALLBACK (PushImages), 
 					  dm);
-*/
+
 	ButtonPull =    gtk_button_new_with_label(_(" Pull  "));
     gtk_box_pack_start(GTK_BOX(Hbox1),ButtonPull, FALSE, FALSE,0);
 	g_signal_connect (ButtonPull, 
 					 "clicked",
                       G_CALLBACK (PullImages), 
 					  dm);
-	return Vbox;
+*/	return Vbox;
 }		

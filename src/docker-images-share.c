@@ -2,7 +2,11 @@
 #include "config.h"
 #endif
 #include "docker-images-share.h"
-
+#include "docker-images-utils.h"
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netdb.h>
 gboolean on_window_quit (GtkWidget *widget, 
                          GdkEvent *event, 
                          gpointer user_data)
@@ -127,3 +131,70 @@ void SetWidgetStyle(GtkWidget * Widget,const char *Color,int FontSize)
     pango_font_description_free (font_desc);
 */
 }
+int CheckEmpty(GtkWidget *EntryWidget)
+{
+    char *p = NULL;
+    p = gtk_entry_get_text(GTK_ENTRY(EntryWidget));
+    
+    return strlen(p);
+}
+
+int CheckNetwork(const char *ip,const char *port)
+{
+    int Sockfd;
+    struct sockaddr_in Addr;
+    unsigned long  addnet; 
+    struct hostent *host;
+
+    addnet = inet_addr(ip);
+    if (addnet == INADDR_NONE)
+    {
+        host = gethostbyname(ip);
+        if(host == NULL)
+        {
+            return -1;
+        }    
+        ip = inet_ntoa(*(struct in_addr*)host->h_addr_list[0]);
+    }
+    if ((Sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
+    {
+        return -1;
+    }
+    Addr.sin_family = AF_INET;
+    Addr.sin_port = htons(atoi(port));
+    if(inet_pton(AF_INET, ip,&Addr.sin_addr) <= 0)
+    {
+        close(Sockfd);
+        return -1;
+    }    
+    bzero(&(Addr.sin_zero),8);
+    
+    if(connect(Sockfd, 
+              (struct sockaddr *)&Addr,  
+              sizeof(struct sockaddr)) < 0)
+    {
+        close(Sockfd);
+        return -1;
+    }
+    
+    close(Sockfd);
+    return 0;
+}   
+int ChangeTag(DockerClient *dc,
+              const char *OldName,
+              const char *OldTag,
+              const char *NewName,
+              const char *NewTag)
+{
+    char MsgBuf[128] = { 0 };
+    CURLcode response;
+
+    sprintf(MsgBuf,"http:/v1.25/images/%s:%s/tag?repo=%s:%s&tag",
+                    OldName,
+                    OldTag,
+                    NewName,
+                    NewTag);
+    response = DockerPost(dc,MsgBuf,NULL,NULL);
+
+    return response;
+}    

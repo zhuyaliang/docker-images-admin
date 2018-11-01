@@ -5,6 +5,7 @@
 static GtkListStore *ListStore = NULL;
 static int LocalImagesCount;
 static int DerivedFlag;
+static int ModifiFlag;     //是否修改docker image name
 static int GetImagesInfo(char *data,DockerImagesManege *dm);
 static void json_parse_array( json_object *jobj, const char *key,DockerImagesManege *dm);
 static void RefreshImagesList( DockerImagesManege *dm )
@@ -25,7 +26,7 @@ static void RefreshImagesList( DockerImagesManege *dm )
 	else
 	{
 		MessageReport(_("Get Images Fail"),_("Curl GET Error"),ERROR);
-	}		
+	}
     for( i = 0; i < LocalImagesCount; i ++)
     {
         ImagesListAppend(dm->LocalImagesList,
@@ -87,6 +88,310 @@ static void RefreshImages (GtkWidget *widget, gpointer data)
     RefreshImagesList(dm);
 }
 
+static void ClosePushWindow(GtkWidget *window, gpointer data)
+{
+    DockerImagesManege *dm = (DockerImagesManege *)data; 
+    
+    gtk_widget_destroy(dm->PushWindow);
+    gtk_widget_show(dm->OpreateWindow);
+}    
+static void ErrorHandle(GtkWidget *win,const char *head,const char *body)
+{
+    gtk_widget_hide(win);
+    MessageReport(head,body,ERROR);
+    gtk_widget_show(win);
+
+}    
+static void CompleteModifi(char *NewImagesName,
+                           char *OldImagesName,
+                           char *url,
+                           char *project)
+{
+        ModifiFlag = 0;
+        sprintf(NewImagesName,
+                "%s/%s/%s",
+                url,
+                project,
+                OldImagesName);
+
+}    
+static void ProjectModifi( char *NewImagesName,
+                           char *OldImagesName,
+                           char *url,
+                           char *project)
+{
+    char **name;
+    int len = 0;
+
+    name = g_strsplit(OldImagesName,url,-1);
+    len = g_strv_length(name);
+    
+    ModifiFlag = 0;
+    sprintf(NewImagesName,
+                "%s/%s/%s",
+                url,
+                project,
+                name[1]);
+
+}    
+static void GetNewImagesName(const char *project,
+                             const char *ip,
+                             const char *port,
+                             const char *OldImagesName,
+                             char *NewImagesName)
+{
+    char tmp1[60] = { 0 };
+    char **ImageInfo;
+    int len = 0;
+
+    ImageInfo = g_strsplit(OldImagesName,"/" ,-1);
+    len = g_strv_length(ImageInfo);
+    /*ip + port + project + name ep:192.168.37.20:5000/layer/test
+      ImageInfo[0] = 192.168.37.20:5000 
+      ImageInfo[0] = layer
+      ImageInfo[0] = test
+    */
+
+    /*There is no port number in the destination repository. ep: docker.isoft.zhcn.cc*/
+    if(strlen(port) == 0)
+    {
+        sprintf(tmp1,"%s",ip);
+    }
+    /* ep :192.168.37.158:8888 */
+    else    
+    {    
+        sprintf(tmp1,"%s:%s",ip,port); 
+    }   
+    
+    /*The image name needs to be completely modified.*/
+    if(len == 1)
+    {
+        CompleteModifi(NewImagesName,OldImagesName,tmp1,project);
+        return;
+    }
+
+    if(len == 2)
+    {
+        /*The address of the warehouse is correct, and the name of the project should be added.*/
+        if(strcmp(ImageInfo[0],tmp1) == 0)
+        {
+            ProjectModifi(NewImagesName,OldImagesName,tmp1,project);
+        }
+        else
+        {
+            CompleteModifi(NewImagesName,OldImagesName,tmp1,project);
+        }
+    }
+    else
+    {
+        if(strcmp(ImageInfo[0],tmp1) == 0)
+        {
+            /* No modification */
+            if(strcmp(ImageInfo[1],project) == 0)
+            {
+                sprintf(NewImagesName,
+                    "%s",
+                    OldImagesName);
+                ModifiFlag = 1;
+            } 
+            else
+            {
+                ProjectModifi(NewImagesName,OldImagesName,tmp1,project);
+            }    
+        }
+        else
+        {
+            CompleteModifi(NewImagesName,OldImagesName,tmp1,project);
+        }    
+    }    
+}    
+static gpointer AsyncPushImages(gpointer data)
+{
+    gboolean spawned;
+    gchar *out, *err;
+    char MsgBuf[300] = { 0 };
+
+    DockerImagesManege *dm = (DockerImagesManege *)data; 
+    
+    sprintf(MsgBuf,"docker push %s",dm->Tmp);
+    spawned = g_spawn_command_line_sync(MsgBuf,&out, &err, NULL, NULL);
+
+    if(spawned && out != NULL)
+    {
+         MessageReport(_("Push Images"),
+                       _("Images push successful,please refresh the remote list."),
+                       INFOR);
+    }    
+    else
+    {
+         MessageReport(_("Push Images error"),
+                       out,
+                       ERROR);
+    }   
+    
+    if(ModifiFlag != 1)
+    {    
+        memset(MsgBuf,'\0',strlen(MsgBuf));
+        sprintf(MsgBuf,"%s/%s", "http://v1.25/images",dm->Tmp);
+	    DockerDelete(dm->dc, MsgBuf);
+    }
+    
+    return FALSE;
+}    
+static void StartPushImages (GtkWidget *widget, gpointer data)
+{
+    DockerImagesManege *dm = (DockerImagesManege *)data; 
+    int i;
+    char *ip;
+    char *port;
+    char *layer;
+    char NewImagesName[64] = { 0 };
+    CURLcode response;
+
+    i = dm->SelectIndex;
+    if(CheckEmpty(dm->EntryAddress) <= 0 || CheckEmpty(dm->EntryPort) <= 0)
+    {
+        ErrorHandle(dm->PushWindow,
+                  _("Get IP And Port"),
+                  _("The IP and port numbers can not be empty."));
+        return;
+    }    
+    ip    = gtk_entry_get_text(GTK_ENTRY(dm->EntryAddress));
+    port  = gtk_entry_get_text(GTK_ENTRY(dm->EntryPort));
+    layer = gtk_entry_get_text(GTK_ENTRY(dm->EntryProject));
+    if(CheckNetwork(ip,port) < 0)
+    {
+        ErrorHandle(dm->PushWindow,
+                  _("Linked warehouse"),
+                  _("Network unreachable,Please input the correct address."));
+        return;
+    }
+    if(strcmp(dm->dll[i].ImagesName,"<none>") == 0 || 
+       strcmp(dm->dll[i].ImagesTag,"<none>") == 0)
+    {
+        ErrorHandle(dm->PushWindow,
+                  _("Change tag"),
+                  _("This is a bad image \"none\""));
+        return;
+    
+    }  
+
+    GetNewImagesName(layer,ip,port,dm->dll[i].ImagesName,NewImagesName);
+    
+    response = ChangeTag(dm->dc,
+                        dm->dll[i].ImagesName,
+                        dm->dll[i].ImagesTag,
+                        NewImagesName,
+                        dm->dll[i].ImagesTag);
+    if(response != CURLE_OK)
+    {
+        ErrorHandle(dm->PushWindow,
+                  _("Change tag"),
+                  _("Change Tag Fail Please try again."));
+        return;
+        
+    }    
+    memset(dm->Tmp,'\0',256);
+    sprintf(dm->Tmp,"%s:%s",
+                    NewImagesName,
+                    dm->dll[i].ImagesTag);
+    g_thread_new("pushimages",(GThreadFunc)AsyncPushImages,(void *)dm);
+    
+    usleep(2000);
+}
+static void PushImages (GtkWidget *widget, gpointer data)
+{
+    DockerImagesManege *dm = (DockerImagesManege *)data; 
+    GtkWidget *PushWindow;
+    GtkWidget *MainVbox;
+    GtkWidget *LabelNote;
+    GtkWidget *LabelAddress;
+    GtkWidget *EntryAddress;
+    GtkWidget *LabelPort;
+    GtkWidget *EntryPort;
+    GtkWidget *LabelLayer;
+    GtkWidget *EntryLayer;
+    GtkWidget *Hbox;
+    GtkWidget *ButtonStart;
+    GtkWidget *ButtonCancle;
+    
+    gtk_widget_hide(dm->OpreateWindow);
+    PushWindow = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    gtk_window_set_title(GTK_WINDOW(PushWindow),_("Push Images"));
+    gtk_window_set_default_size(GTK_WINDOW(PushWindow), 150, 150);
+    gtk_window_set_position(GTK_WINDOW(PushWindow), GTK_WIN_POS_MOUSE); 
+    g_signal_connect (PushWindow, "destroy",
+                      G_CALLBACK (ClosePushWindow),
+                      dm);
+    dm->PushWindow = PushWindow;
+    gtk_container_set_border_width (GTK_CONTAINER (PushWindow), 10);
+
+    MainVbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+    gtk_container_add (GTK_CONTAINER (PushWindow),MainVbox);
+
+    LabelNote = gtk_label_new(NULL);
+    SetLableFontType(LabelNote,"gray",11,_("Please input the IP address, port number \rand storage rpath of the warehouse."));
+    gtk_box_pack_start (GTK_BOX (MainVbox),
+                        LabelNote,
+                        FALSE, FALSE, 0);
+
+    LabelAddress = gtk_label_new(NULL);
+    SetLableFontType(LabelAddress,"red",13,_("Address"));
+    gtk_box_pack_start (GTK_BOX (MainVbox),
+                        LabelAddress,
+                        FALSE, FALSE, 0);
+    EntryAddress = gtk_entry_new();
+    dm->EntryAddress = EntryAddress;
+    gtk_entry_set_max_length(GTK_ENTRY(EntryAddress),48);
+    gtk_box_pack_start (GTK_BOX (MainVbox),
+                        EntryAddress,
+                        FALSE, FALSE, 0);
+
+    LabelPort = gtk_label_new(NULL);
+    SetLableFontType(LabelPort,"red",13,_("Port"));
+    gtk_box_pack_start (GTK_BOX (MainVbox),
+                        LabelPort,
+                        FALSE, FALSE, 0);
+    EntryPort = gtk_entry_new();
+    dm->EntryPort = EntryPort;
+    gtk_entry_set_max_length(GTK_ENTRY(EntryPort),48);
+    gtk_box_pack_start (GTK_BOX (MainVbox),
+                        EntryPort,
+                        FALSE, FALSE, 0);
+
+    LabelLayer = gtk_label_new(NULL);
+    SetLableFontType(LabelLayer,"red",13,_("Project"));
+    gtk_box_pack_start (GTK_BOX (MainVbox),
+                        LabelLayer,
+                        FALSE, TRUE, 0);
+    EntryLayer = gtk_entry_new();
+    dm->EntryProject = EntryLayer;
+    gtk_entry_set_max_length(GTK_ENTRY(EntryLayer),48);
+    gtk_box_pack_start (GTK_BOX (MainVbox),
+                        EntryLayer,
+                        FALSE, TRUE, 0);
+
+    Hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL,0); 
+    gtk_box_pack_start(GTK_BOX(MainVbox),Hbox,FALSE,TRUE,10);
+    
+    ButtonStart = gtk_button_new_with_label (_("Start Push"));
+    gtk_box_pack_start (GTK_BOX (Hbox),
+                        ButtonStart,
+                        FALSE, TRUE, 10);
+    ButtonCancle = gtk_button_new_with_label (_("Cancle Push"));
+    gtk_box_pack_start (GTK_BOX (Hbox),
+                        ButtonCancle,
+                        FALSE, TRUE, 10);
+
+	g_signal_connect (ButtonStart, 
+					 "clicked",
+                      G_CALLBACK (StartPushImages), 
+					  dm);
+    gtk_widget_show_all (PushWindow);
+
+    /*
+*/
+}    
 static void CreateOperateWin(DockerImagesManege *dm)
 {
     GtkWidget *OpreateWindow;
@@ -105,7 +410,7 @@ static void CreateOperateWin(DockerImagesManege *dm)
     g_signal_connect (OpreateWindow, "destroy",
                       G_CALLBACK (gtk_widget_destroyed),
                       &OpreateWindow);
-
+    dm->OpreateWindow = OpreateWindow;
     gtk_container_set_border_width (GTK_CONTAINER (OpreateWindow), 10);
 
     MainVbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
@@ -121,6 +426,10 @@ static void CreateOperateWin(DockerImagesManege *dm)
 
     PushButton = gtk_button_new_with_label (_("Push"));
     gtk_container_add (GTK_CONTAINER (Hbox), PushButton);
+	g_signal_connect (PushButton, 
+					 "clicked",
+                      G_CALLBACK (PushImages), 
+					  dm);
 
     TagButton = gtk_button_new_with_label (_("Rename"));
     gtk_container_add (GTK_CONTAINER (Hbox), TagButton);
@@ -193,7 +502,7 @@ static int ExtractId(int index,char *data,DockerImagesManege *dm)
         return -1;
     memset(dm->dll[index].ImagesId,'\0',strlen(dm->dll[index].ImagesId));
     memcpy(dm->dll[index].ImagesId,&data[7],12);
-	return 0;
+    return 0;
 }
 static int ExtractSzie(int index,int size,DockerImagesManege *dm)
 {
@@ -230,7 +539,6 @@ static int ExtractSzie(int index,int size,DockerImagesManege *dm)
         memcpy(dm->dll[index].ImagesSize,Sizebuf,strlen(Sizebuf));
     
     } 
-    
 	return 0;
 }
  /*printing the value corresponding to boolean, double, integer and strings*/
@@ -347,6 +655,7 @@ static void JsonSplit(char *data,DockerImagesManege *dm)
 void json_parse(json_object * jobj,DockerImagesManege *dm)
 {
     enum json_type type;
+    json_object * j;
     json_object_object_foreach(jobj, key, val)  /*Passing through every array element*/
     {
         type = json_object_get_type(val);
@@ -363,8 +672,8 @@ void json_parse(json_object * jobj,DockerImagesManege *dm)
                 print_json_value(val,key,dm);
                 break;
             case json_type_object:
-                jobj = json_object_object_get(jobj, key);
-                json_parse(jobj,dm);
+                j = json_object_object_get(jobj, key);
+                json_parse(j,dm);
                 break;
             case json_type_array:
                 json_parse_array(jobj, key,dm);
@@ -403,7 +712,7 @@ static int GetImagesInfo(char *data,DockerImagesManege *dm)
 {
     char **ImageInfo;
     char Delimit[20] = { 0 };
-    char paragraph[512] = { 0 };
+    char paragraph[1024] = { 0 };
     int len = 0;
     int j;
     int ll = 0;
@@ -425,7 +734,6 @@ static int GetImagesInfo(char *data,DockerImagesManege *dm)
         memset(paragraph,'\0',strlen(paragraph));
     }	
 	g_strfreev(ImageInfo); 
-   
     return len - 1;
 }		
 GtkWidget *LoadLocalImages(DockerImagesManege *dm)
@@ -458,7 +766,6 @@ GtkWidget *LoadLocalImages(DockerImagesManege *dm)
     /* init user list */
     ListViewInit(ImagesList);
     dm->LocalImagesList = ImagesList;
-
     RefreshImagesList(dm);
 
     gtk_container_add (GTK_CONTAINER (Scrolled), ImagesList);

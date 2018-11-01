@@ -134,7 +134,7 @@ int main(int argc, char **argv)
     
     bindtextdomain (PACKAGE, LOCALEDIR);   
     textdomain (PACKAGE); 
-    
+    g_cond_init (&Cond);   
     gtk_init(&argc, &argv);
     
 	/*Initialization docker API and Curl*/
@@ -142,7 +142,7 @@ int main(int argc, char **argv)
 	if(dm.dc == NULL)
 	{
 		exit(1);	
-	}			
+	}		
     /* Create the main window */
     InitMainWindow(&dm);
 	g_signal_connect(G_OBJECT(dm.MainWindow), 

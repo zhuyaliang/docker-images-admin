@@ -111,29 +111,34 @@ CURLcode DockerGet(DockerClient *dc, const char *url,const char *Socket)
   InitCurl(dc,Socket);
   return Perform(dc,url);
 }
-static size_t realsize;
-static size_t HeaderCallback(char *buf, size_t size,
-                            size_t nitems, void *data)
+
+CURLcode DockerAuthentication(DockerClient *dc, 
+                              const char *url,
+                              const char *name,
+                              const char *pass)
 {
-    size_t datasize;
-  	datasize = size * nitems;
+    char UserPwd[256] = { 0 };
+    InitCurl(dc,NULL);
+    if((strlen(name) + strlen(pass)) >= 254)
+        return CURLE_RANGE_ERROR;
     
-    if(strstr(buf,"Docker-Content-Digest") != NULL)
-    {   
-        memcpy((char *)data,&buf[30],strlen(buf)-30);
-        realsize = 1;
-    }    
-  	return datasize;
-}
-CURLcode DockerQueryDigest(DockerClient *dc, const char *url,char *Return) 
+    sprintf(UserPwd,"%s:%s",name,pass);
+    curl_easy_setopt(dc->curl, CURLOPT_USERPWD,UserPwd);
+    return Perform(dc,url);
+    
+}    
+CURLcode DockerPush(DockerClient *dc, const char *url, const char *data)
 {
 	CURLcode response;
-    InitCurl(dc,NULL);
-    curl_easy_setopt(dc->curl, CURLOPT_HEADER, 1L);
-    curl_easy_setopt(dc->curl,CURLOPT_HEADERFUNCTION,HeaderCallback);
-    curl_easy_setopt(dc->curl, CURLOPT_HEADERDATA, Return);
-    response = Perform(dc,url);
-    
+    struct curl_slist *headers = NULL;
+
+    InitCurl(dc,DOCKERSOCK);
+    headers = curl_slist_append(headers,data);
+    curl_easy_setopt(dc->curl, CURLOPT_HTTPHEADER, headers);
+    curl_easy_setopt(dc->curl, CURLOPT_POSTREDIR, CURLOPT_POST301);
+    curl_easy_setopt(dc->curl, CURLOPT_POSTFIELDS, NULL);
+    response = Perform(dc, url);
+    curl_slist_free_all(headers);
     return response;
 }
 char *GetBuffer(DockerClient *dc) 
@@ -155,10 +160,28 @@ CURLcode DockerPost(DockerClient *dc,
         headers = curl_slist_append(headers, head);
         curl_easy_setopt(dc->curl, CURLOPT_HTTPHEADER, headers);
     }
+
     curl_easy_setopt(dc->curl, CURLOPT_POSTFIELDS, (void *)data);
     response = Perform(dc, url);
     if(head != NULL)
         curl_slist_free_all(headers);
+
+    return response;
+}
+CURLcode DockerDeleteRepos(DockerClient *dc, const char *url,const char *name,const char *pass)
+{
+    CURLcode response;
+    char UserPwd[256] = { 0 };
+    
+    InitCurl(dc,NULL);
+    if((strlen(name) + strlen(pass)) >= 254)
+        return CURLE_RANGE_ERROR;
+    
+    sprintf(UserPwd,"%s:%s",name,pass);
+    curl_easy_setopt(dc->curl, CURLOPT_HEADER, 1L);
+    curl_easy_setopt(dc->curl, CURLOPT_USERPWD,UserPwd);
+    curl_easy_setopt(dc->curl, CURLOPT_CUSTOMREQUEST,"DELETE");
+    response = Perform(dc, url);
 
     return response;
 }
