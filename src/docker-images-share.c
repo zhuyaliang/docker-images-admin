@@ -197,4 +197,16 @@ int ChangeTag(DockerClient *dc,
     response = DockerPost(dc,MsgBuf,NULL,NULL);
 
     return response;
-}    
+}
+int IsEmpty(const char *str)
+{
+    if(strlen(str) <= 0)
+    {
+        MessageReport(_("Entry input"),
+                      _("Input parameter can not be empty."),
+                      ERROR);
+        return -1;
+    }
+    return 0;
+}
+

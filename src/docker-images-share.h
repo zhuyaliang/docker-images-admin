@@ -52,8 +52,15 @@ typedef struct
 
 typedef struct
 {
+    GtkWidget *NewImagesName;
+    GtkWidget *NewImagesTag;
+}RenameImageInfo;
+
+typedef struct
+{
     ImagesInfoList   dll[200];
     ImagesInfoList   dtl[200];
+    RenameImageInfo  ReImage;  
     char             Address[128];
     char             Name[128];
     char             Port[10];
@@ -64,6 +71,7 @@ typedef struct
     GtkWidget        *MainWindow;
     GtkWidget        *OpreateWindow;
     GtkWidget        *PushWindow;
+    GtkWidget        *RenameWindow;
     GtkWidget        *NoteBook;
     GtkListStore     *ListSTore;
     GtkWidget        *LocalImagesList;
@@ -99,4 +107,5 @@ int ChangeTag(DockerClient *dc,
               const char *layer,
               const char *name,
               const char *tag);
+int IsEmpty(const char *str);
 #endif

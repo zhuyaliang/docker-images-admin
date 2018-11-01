@@ -146,17 +146,6 @@ static int GetRemoteImagesInfo (char *data,DockerImagesManege *dm)
                     (GFunc)GetValue, dm);
    // g_hash_table_destroy(hash);
 }    
-static int IsEmpty(const char *str)
-{
-    if(strlen(str) <= 0)
-    {
-        MessageReport(_("Connect Repository"),
-                      _("Input parameter can not be empty."),
-                      ERROR);
-        return -1;
-    }    
-    return 0;
-}    
 static int GetRepositoryImages (GtkWidget *widget, gpointer data)
 {
     DockerImagesManege *dm = (DockerImagesManege *)data;

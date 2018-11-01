@@ -92,7 +92,7 @@ static void ClosePushWindow(GtkWidget *window, gpointer data)
 {
     DockerImagesManege *dm = (DockerImagesManege *)data; 
     
-    gtk_widget_destroy(dm->PushWindow);
+    gtk_widget_destroy(window);
     gtk_widget_show(dm->OpreateWindow);
 }    
 static void ErrorHandle(GtkWidget *win,const char *head,const char *body)
@@ -121,10 +121,9 @@ static void ProjectModifi( char *NewImagesName,
                            char *project)
 {
     char **name;
-    int len = 0;
 
     name = g_strsplit(OldImagesName,url,-1);
-    len = g_strv_length(name);
+    g_strv_length(name);
     
     ModifiFlag = 0;
     sprintf(NewImagesName,
@@ -391,7 +390,121 @@ static void PushImages (GtkWidget *widget, gpointer data)
 
     /*
 */
+}   
+static int ChangeReName (GtkWidget *widget, gpointer data)
+{
+    DockerImagesManege *dm = (DockerImagesManege *)data; 
+    char *Name;
+    char *Tag;
+	CURLcode response;
+    int i;
+    
+    Name = gtk_entry_get_text(GTK_ENTRY(dm->ReImage.NewImagesName));
+    if(IsEmpty(Name) < 0)
+    {    
+        gtk_widget_show (dm->RenameWindow);
+        return -1;
+    }    
+    Tag = gtk_entry_get_text(GTK_ENTRY(dm->ReImage.NewImagesTag));
+    if(IsEmpty(Tag) < 0)
+    {    
+        gtk_widget_show (dm->RenameWindow);
+        return -1;
+    }   
+    i = dm->SelectIndex;
+    response = ChangeTag(dm->dc,
+                        dm->dll[i].ImagesName,
+                        dm->dll[i].ImagesTag,
+                        Name,
+                        Tag);
+    if(response != CURLE_OK)
+    {
+        ErrorHandle(dm->RenameWindow,
+                  _("Change tag"),
+                  _("Change Tag Fail Please try again."));
+        return -1;
+        
+    }    
+    else
+    {
+        MessageReport(_("Change tag"),_("Change Tag Success"),INFOR);
+        gtk_widget_destroy(dm->RenameWindow);
+    }     
+    return 0;
 }    
+static void RenameImages (GtkWidget *widget, gpointer data)
+{
+    DockerImagesManege *dm = (DockerImagesManege *)data; 
+    
+    GtkWidget *RenameWindow;
+    GtkWidget *MainVbox;
+    GtkWidget *LabelName;
+    GtkWidget *LabelTag;
+    GtkWidget *EntryName;
+    GtkWidget *EntryTag;
+    GtkWidget *Hbox;
+    GtkWidget *ButtonConfirm;
+    GtkWidget *ButtonReset;
+    
+    gtk_widget_hide(dm->OpreateWindow);
+    RenameWindow = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    gtk_window_set_title(GTK_WINDOW(RenameWindow),_("Rename Images"));
+    gtk_window_set_default_size(GTK_WINDOW(RenameWindow), 180, 180);
+    gtk_window_set_position(GTK_WINDOW(RenameWindow), GTK_WIN_POS_MOUSE); 
+    g_signal_connect (RenameWindow, "destroy",
+                      G_CALLBACK (ClosePushWindow),
+                      dm);
+    dm->RenameWindow = RenameWindow;
+    gtk_container_set_border_width (GTK_CONTAINER (RenameWindow), 10);
+
+    MainVbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+    gtk_container_add (GTK_CONTAINER (RenameWindow),MainVbox);
+    
+    LabelName = gtk_label_new(NULL);
+    SetLableFontType(LabelName,"red",13,_("Image Name"));
+    gtk_box_pack_start (GTK_BOX (MainVbox),
+                        LabelName,
+                        FALSE, FALSE, 0);
+    EntryName = gtk_entry_new();
+    gtk_entry_set_max_length(GTK_ENTRY(EntryName),48);
+    gtk_box_pack_start (GTK_BOX (MainVbox),
+                        EntryName,
+                        FALSE, FALSE, 0);
+    dm->ReImage.NewImagesName = EntryName;
+    gtk_widget_set_tooltip_text(EntryName,_("New Image name"));
+    LabelTag = gtk_label_new(NULL);
+    SetLableFontType(LabelTag,"red",13,_("Image Tag"));
+    gtk_box_pack_start (GTK_BOX (MainVbox),
+                        LabelTag,
+                        FALSE, FALSE, 0);
+    
+    EntryTag = gtk_entry_new();
+    gtk_entry_set_max_length(GTK_ENTRY(EntryTag),48);
+    gtk_box_pack_start (GTK_BOX (MainVbox),
+                        EntryTag,
+                        FALSE, FALSE, 0);
+    dm->ReImage.NewImagesTag = EntryTag;
+    gtk_widget_set_tooltip_text(EntryTag,_("New Image tag"));
+   
+    Hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL,0); 
+    gtk_box_pack_start(GTK_BOX(MainVbox),Hbox,FALSE,TRUE,10);
+    
+    ButtonConfirm = gtk_button_new_with_label (_("Confirm"));
+    gtk_box_pack_start (GTK_BOX (Hbox),
+                        ButtonConfirm,
+                        FALSE, TRUE, 10);
+    ButtonReset = gtk_button_new_with_label (_(" Reset  "));
+    gtk_box_pack_start (GTK_BOX (Hbox),
+                        ButtonReset,
+                        FALSE, TRUE, 10);
+
+	g_signal_connect (ButtonConfirm, 
+					 "clicked",
+                      G_CALLBACK (ChangeReName),
+                      dm);
+  
+    gtk_widget_show_all (RenameWindow);
+}
 static void CreateOperateWin(DockerImagesManege *dm)
 {
     GtkWidget *OpreateWindow;
@@ -433,6 +546,10 @@ static void CreateOperateWin(DockerImagesManege *dm)
 
     TagButton = gtk_button_new_with_label (_("Rename"));
     gtk_container_add (GTK_CONTAINER (Hbox), TagButton);
+	g_signal_connect (TagButton, 
+					 "clicked",
+                      G_CALLBACK (RenameImages), 
+					  dm);
 
     LoadButton = gtk_button_new_with_label (_("Load"));
     gtk_container_add (GTK_CONTAINER (Hbox), LoadButton);

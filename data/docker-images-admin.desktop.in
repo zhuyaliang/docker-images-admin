@@ -6,6 +6,6 @@ Comment[zh_CN]==镜像管理
 Categories=GNOME;GTK;Settings;System;Utility;
 Keywords=Configuration;Utility;
 Exec=images-admin
-Icon=images-admin
+Icon=docker-images-admin
 Terminal=false
 Type=Application
