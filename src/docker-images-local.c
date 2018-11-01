@@ -330,7 +330,7 @@ static void PushImages (GtkWidget *widget, gpointer data)
     gtk_container_add (GTK_CONTAINER (PushWindow),MainVbox);
 
     LabelNote = gtk_label_new(NULL);
-    SetLableFontType(LabelNote,"gray",11,_("Please input the IP address, port number \rand storage rpath of the warehouse."));
+    SetLableFontType(LabelNote,"gray",11,_("Please input the IP address, port number\n and storage rpath of the warehouse."));
     gtk_box_pack_start (GTK_BOX (MainVbox),
                         LabelNote,
                         FALSE, FALSE, 0);

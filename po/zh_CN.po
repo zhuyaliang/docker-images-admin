@@ -1,4 +1,5 @@
-# Chinese translations for docker-images-admin package.
+# Chinese translations for docker-images-admin package
+# docker-images-admin 软件包的简体中文翻译.
 # Copyright (C) 2018 THE docker-images-admin'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the docker-images-admin package.
 # Automatically generated, 2018.
@@ -7,13 +8,13 @@ msgid ""
 msgstr ""
 "Project-Id-Version: docker-images-admin\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-09-06 07:09+0800\n"
-"PO-Revision-Date: 2018-09-06 07:09+0800\n"
+"POT-Creation-Date: 2018-11-01 15:32+0800\n"
+"PO-Revision-Date: 2018-11-01 15:31+0800\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
 "Language: zh_CN\n"
 "MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=ASCII\n"
+"Content-Type: text/plain; charset=GB2312\n"
 "Content-Transfer-Encoding: 8bit\n"
 
 #: src/main.c:15
@@ -68,67 +69,169 @@ msgstr ""
 msgid "images size"
 msgstr ""
 
-#: src/docker-images-remote.c:68
+#: src/docker-images-remote.c:57 src/docker-images-remote.c:63
 msgid "Pull Images"
 msgstr ""
 
-#: src/docker-images-remote.c:133 src/docker-images-remote.c:176
-#: src/docker-images-remote.c:189
+#: src/docker-images-remote.c:58
+msgid "Images pull successful,please refresh the local list."
+msgstr ""
+
+#: src/docker-images-remote.c:126 src/docker-images-remote.c:153
+#: src/docker-images-remote.c:208
 msgid "Connect Repository"
 msgstr ""
 
-#: src/docker-images-remote.c:177
-msgid "The address and port number can not be empty."
+#: src/docker-images-remote.c:154
+msgid "Input parameter can not be empty."
 msgstr ""
 
-#: src/docker-images-remote.c:225
+#: src/docker-images-remote.c:248 src/docker-images-local.c:339
 msgid "Address"
 msgstr ""
 
-#: src/docker-images-remote.c:234
+#: src/docker-images-remote.c:257 src/docker-images-local.c:351
 msgid "Port"
 msgstr ""
 
-#: src/docker-images-remote.c:242
+#: src/docker-images-remote.c:266
+msgid "Name"
+msgstr ""
+
+#: src/docker-images-remote.c:275
+msgid "Pass"
+msgstr ""
+
+#: src/docker-images-remote.c:283
 msgid "Connect"
 msgstr ""
 
-#: src/docker-images-remote.c:303 src/docker-images-local.c:271
+#: src/docker-images-remote.c:344 src/docker-images-local.c:781
 msgid " Remove  "
 msgstr ""
 
-#: src/docker-images-remote.c:310
-msgid " Push  "
-msgstr ""
-
-#: src/docker-images-remote.c:317
-msgid " Pull  "
-msgstr ""
-
-#: src/docker-images-local.c:20
+#: src/docker-images-local.c:28
 msgid "Get Images Fail"
 msgstr ""
 
-#: src/docker-images-local.c:20
+#: src/docker-images-local.c:28
 msgid "Curl GET Error"
 msgstr ""
 
-#: src/docker-images-local.c:278
+#: src/docker-images-local.c:221 src/docker-images-local.c:320
+msgid "Push Images"
+msgstr ""
+
+#: src/docker-images-local.c:222
+msgid "Images push successful,please refresh the remote list."
+msgstr ""
+
+#: src/docker-images-local.c:227
+msgid "Push Images error"
+msgstr ""
+
+#: src/docker-images-local.c:255
+msgid "Get IP And Port"
+msgstr ""
+
+#: src/docker-images-local.c:256
+msgid "The IP and port numbers can not be empty."
+msgstr ""
+
+#: src/docker-images-local.c:265
+msgid "Linked warehouse"
+msgstr ""
+
+#: src/docker-images-local.c:266
+msgid "Network unreachable,Please input the correct address."
+msgstr ""
+
+#: src/docker-images-local.c:273 src/docker-images-local.c:289
+msgid "Change tag"
+msgstr ""
+
+#: src/docker-images-local.c:274
+msgid "This is a bad image \"none\""
+msgstr ""
+
+#: src/docker-images-local.c:290
+msgid "Change Tag Fail Please try again."
+msgstr ""
+
+#: src/docker-images-local.c:333
+msgid ""
+"Please input the IP address, port number\n"
+" and storage rpath of the warehouse."
+msgstr ""
+
+#: src/docker-images-local.c:363
+msgid "Project"
+msgstr ""
+
+#: src/docker-images-local.c:377
+msgid "Start Push"
+msgstr ""
+
+#: src/docker-images-local.c:381
+msgid "Cancle Push"
+msgstr ""
+
+#: src/docker-images-local.c:407
+msgid "Opreate Images"
+msgstr ""
+
+#: src/docker-images-local.c:419
+msgid "Supported operations"
+msgstr ""
+
+#: src/docker-images-local.c:427
+msgid "Push"
+msgstr ""
+
+#: src/docker-images-local.c:434
+msgid "Rename"
+msgstr ""
+
+#: src/docker-images-local.c:437
+msgid "Load"
+msgstr ""
+
+#: src/docker-images-local.c:440
+msgid "Save"
+msgstr ""
+
+#: src/docker-images-local.c:788
 msgid "  Refresh "
 msgstr ""
 
-#: src/docker-images-local.c:285
+#: src/docker-images-local.c:795
 msgid "Operation"
 msgstr ""
 
-#: src/docker-images-local.c:292
+#: src/docker-images-local.c:802
 msgid "   Run      "
 msgstr ""
 
-#: src/docker-images-share.c:72
+#: src/docker-images-share.c:76
 msgid "_Return"
 msgstr ""
 
-#: src/docker-images-share.c:83
+#: src/docker-images-share.c:87
 msgid "Message"
+msgstr ""
+
+#: src/docker-images-utils.c:59
+msgid "Get Curl Version"
+msgstr ""
+
+#: src/docker-images-utils.c:60
+msgid "Curl version needs more than 7.40.0"
+msgstr ""
+
+#: src/docker-images-utils.c:66
+msgid "Init Docker"
+msgstr ""
+
+#: src/docker-images-utils.c:67
+msgid "Please start the docker service first."
 msgstr ""
